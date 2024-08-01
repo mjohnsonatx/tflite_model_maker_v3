@@ -5,103 +5,51 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4a3f7e06-2b93-4814-a679-5d7e51324022" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/tflite_model_maker_v3.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/inference.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_whole.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-12-234731_png_jpg.rf.0c072af34e2c5ba638e03928ec3cb87d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-12-235316_png_jpg.rf.958a6dc69daf05e0e69f9edfdf342208.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-12-235810_png_jpg.rf.f53d079e71ba8aad8ab48e36658de3d2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-12-235838_png_jpg.rf.bc178a5b103eeca1df32e3640308fe1f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-12-235939_png_jpg.rf.e04250ad64049f2f78e303baf868983d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-165533_png_jpg.rf.8c1d795c05eec76cd11319c99744c5dd.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-165852_png_jpg.rf.6a9c32ed1ef8b2795b255d7c859841af.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-170020_png_jpg.rf.ecbe1ef6350285991d022a66171c672d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-170542_png_jpg.rf.49509152b06bde8978a6d190dec7dfac.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-190331_png_jpg.rf.023b06786f8417c6becdc1023cf9bcd2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-190516_png_jpg.rf.2d841976a970855068e30ec670ee8f39.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-191131_png_jpg.rf.dbd226c1cb2bfdbf7305ce696f2254b9.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-193515_png_jpg.rf.115a4f3dc5770f3d014e0a0aae51867d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-212638_png_jpg.rf.7896062f264bf92fe9482c9aef44dfaf.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-212957_png_jpg.rf.eaa8e73888837ad8c0e9981f697d210b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-213348_png_jpg.rf.eddd920f1e582b4f44840644ea03541e.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-214103_png_jpg.rf.e6b35509a4c6be456ed6e77060388b61.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-214225_png_jpg.rf.a78453b4cd324c3e07f8c77a5f923a0d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-214517_png_jpg.rf.75202df91adb69464403a472a58fb39a.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-214853_png_jpg.rf.c6e416c0421708beae8e87f1f22e944f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-215358_png_jpg.rf.e9c009f6ca3d8b859929fd0b146e650f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-215445_png_jpg.rf.511cedd91ca08a7b2cc07f340bf8e4c7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-220022_png_jpg.rf.7fab50083273ee4c52e64eba05cbec22.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-220637_png_jpg.rf.f3f5e70ab051f07633ec43cb2fbdd157.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-220801_png_jpg.rf.877e5e4dee9ead2f32b3166d709ca22c.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-13-220821_png_jpg.rf.d3b1125a1586b53e6910f9af78343567.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-193301_png_jpg.rf.c0a22cd99ea63b946bd61b31fb562d0f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-193417_png_jpg.rf.fc95d3c90dd6e12bedb5e410b1b089c7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-193656_png_jpg.rf.dfcca40b2dbd65e3dc282b79d69dd292.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-193729_png_jpg.rf.631c025c3da82b9cf9ddd5fe75ccaeb5.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-193734_png_jpg.rf.4608e26b41654c0ad1ab34a11bdb6cfa.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-193818_png_jpg.rf.6b3166b84a84dac4b243fe836600219a.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-194216_png_jpg.rf.ef1ab9fc8037d5fcf52d272acd199f90.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-194537_png_jpg.rf.4a7184a77b8b16f79a22422783fab8e4.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-195312_png_jpg.rf.5420d28c552cc7de1a8a17c94a4155d3.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-195316_png_jpg.rf.ae40891d6342fff89e13888001f0f523.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-195328_png_jpg.rf.6e58868c932d7416bea16b17efff841d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-195446_png_jpg.rf.74d533450f691da40f8f1f8f9431c325.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-200022_png_jpg.rf.725c0d82b83222efd9023a6e2d34e1a7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-200034_png_jpg.rf.da2e45f387f11ac7c3a32fd3d51c17e4.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-200131_png_jpg.rf.d3434e2a41646650061abcbfb0fbc9aa.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-200304_png_jpg.rf.982d60557a01c30ef1314ede3a56f824.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-200335_png_jpg.rf.daeaf5e798a728184ca7c89971bd2d7f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-200554_png_jpg.rf.dad107df0dfcec7c83c1f76830cce4ac.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/-2022-03-14-200604_png_jpg.rf.fbd8cf9453d163d1c730bb9c49047940.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/100_jpg.rf.0f74eaefed96853b03c17da5a8ceda6f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/100_jpg.rf.858294fcee5ffcebe96a1d5cca347ec0.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/109_jpg.rf.48c4443a33eb92fade4ee60026be649b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/109_jpg.rf.8c4801996f3333d45d7602ce0af2451e.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/109_jpg.rf.cdec148ec9259d428c699d836c80c170.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/118_jpg.rf.82b1b6de750076eb346df813225a2432.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/118_jpg.rf.f47fa188f226dc36a9507c11f94655af.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/128-3-_jpg.rf.e69581b8792f41269ee673726c24600a.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/129_jpg.rf.790a75bc64537fb623a7c7463e464758.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/13-4-_jpg.rf.bc92e37673f8da04d8eb8812b6a688f4.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/130-2-_jpg.rf.ad5ee46e671acd3c9f3540e1caff050e.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/130_jpg.rf.57fa2d83991c93a51dd28ce7642a9237.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/133_jpg.rf.32a8e4138ad9bb27a7245c41e760346f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/133_jpg.rf.bb793f7e82a7b46d2f1cd6f28cfe412c.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/137_jpg.rf.ef21928ffff9429485e214505f90ed4c.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/141-2-_jpg.rf.e866a29edbfacd78ee683f737e902b2f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/149_jpg.rf.8a6b805464b428d0457fd653ef0fcea0.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/149_jpg.rf.e02c475bd61233a39e68884a07f2b7bd.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/159_jpg.rf.68ca180089c26ab903d0dec6c9b2f0fb.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/160_jpg.rf.722223166a393e3e40a166a3dc49e871.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/169-2-_jpg.rf.9598e5990e3cdc5ba48700d1897ac642.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/17_jpg.rf.ec261e13703e72a21fd419810ee715be.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/183_jpg.rf.f9acae8e4550d5a7e9d5b9bbce998370.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/185_jpg.rf.ac03fbc9c298509ba59d235ba2f474e8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/188_jpg.rf.337e14b4ca34f464e21782d793496800.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/188_jpg.rf.c44f4cbf817afbd7e7855803cac062ee.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/190_jpg.rf.84dfab4f4e66d17a1b1672d9c74a94f6.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/202_jpg.rf.1625342bead7fd34bd326b273fe90fd9.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/204_jpg.rf.beb0c66f1dd4a00b338a5bc6a6d71aa1.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/207_jpg.rf.5353bd8ef1680f03398a81992dfeba5f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/209_jpg.rf.dac9f32a177df2527ac09e452ae776de.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/219_jpg.rf.b240840eb1e64593a8df4447dd0cff39.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/22-4-_jpg.rf.a9fa8e6667266c8844530ba522687e27.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/225_jpg.rf.8d26f2be787d516681c31308259726d6.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/225_jpg.rf.df7f95413937ec57b23d7dbd8bc507d8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/240_jpg.rf.64707079e7afdc1f3efbeaab0e1ace74.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/247-2-_jpg.rf.16e7f1287d9cb6ae6ce25f19ad772624.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/249_jpg.rf.201b27daf10f9550a8f7bd4ff31b4b53.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/250_jpg.rf.227de34285cacfc495e6c727c24d2b6d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/258_jpg.rf.9cd3cb981a3d13a51cee231dbc9ec00c.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/25_jpg.rf.510834c254240d653104efcacb2a5d87.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/output/279_jpg.rf.ca9088a36019a6027ba7720cc46b9b42.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requirements.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_quantized.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_quantized_4_75.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/old_models/efficientdet_lite0_whole_50_epoch_no_quant.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-234731_png_jpg.rf.0c072af34e2c5ba638e03928ec3cb87d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235316_png_jpg.rf.958a6dc69daf05e0e69f9edfdf342208.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235810_png_jpg.rf.f53d079e71ba8aad8ab48e36658de3d2.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235838_png_jpg.rf.bc178a5b103eeca1df32e3640308fe1f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235939_png_jpg.rf.e04250ad64049f2f78e303baf868983d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-165533_png_jpg.rf.8c1d795c05eec76cd11319c99744c5dd.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-165852_png_jpg.rf.6a9c32ed1ef8b2795b255d7c859841af.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-170020_png_jpg.rf.ecbe1ef6350285991d022a66171c672d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-170542_png_jpg.rf.49509152b06bde8978a6d190dec7dfac.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-190331_png_jpg.rf.023b06786f8417c6becdc1023cf9bcd2.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-190516_png_jpg.rf.2d841976a970855068e30ec670ee8f39.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-191131_png_jpg.rf.dbd226c1cb2bfdbf7305ce696f2254b9.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-193515_png_jpg.rf.115a4f3dc5770f3d014e0a0aae51867d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-212638_png_jpg.rf.7896062f264bf92fe9482c9aef44dfaf.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-212957_png_jpg.rf.eaa8e73888837ad8c0e9981f697d210b.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-213348_png_jpg.rf.eddd920f1e582b4f44840644ea03541e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214103_png_jpg.rf.e6b35509a4c6be456ed6e77060388b61.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214225_png_jpg.rf.a78453b4cd324c3e07f8c77a5f923a0d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214517_png_jpg.rf.75202df91adb69464403a472a58fb39a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214853_png_jpg.rf.c6e416c0421708beae8e87f1f22e944f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-215358_png_jpg.rf.e9c009f6ca3d8b859929fd0b146e650f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-215445_png_jpg.rf.511cedd91ca08a7b2cc07f340bf8e4c7.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220022_png_jpg.rf.7fab50083273ee4c52e64eba05cbec22.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220637_png_jpg.rf.f3f5e70ab051f07633ec43cb2fbdd157.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220801_png_jpg.rf.877e5e4dee9ead2f32b3166d709ca22c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220821_png_jpg.rf.d3b1125a1586b53e6910f9af78343567.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193301_png_jpg.rf.c0a22cd99ea63b946bd61b31fb562d0f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193417_png_jpg.rf.fc95d3c90dd6e12bedb5e410b1b089c7.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193656_png_jpg.rf.dfcca40b2dbd65e3dc282b79d69dd292.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193729_png_jpg.rf.631c025c3da82b9cf9ddd5fe75ccaeb5.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193734_png_jpg.rf.4608e26b41654c0ad1ab34a11bdb6cfa.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193818_png_jpg.rf.6b3166b84a84dac4b243fe836600219a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-194216_png_jpg.rf.ef1ab9fc8037d5fcf52d272acd199f90.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-194537_png_jpg.rf.4a7184a77b8b16f79a22422783fab8e4.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195312_png_jpg.rf.5420d28c552cc7de1a8a17c94a4155d3.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195316_png_jpg.rf.ae40891d6342fff89e13888001f0f523.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195328_png_jpg.rf.6e58868c932d7416bea16b17efff841d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195446_png_jpg.rf.74d533450f691da40f8f1f8f9431c325.jpg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/inference.py" beforeDir="false" afterPath="$PROJECT_DIR$/inference.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/efficientdet_lite0_whole.tflite" beforeDir="false" afterPath="$PROJECT_DIR$/models/efficientdet_lite0_whole.tflite" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -118,9 +66,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 1
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
   <component name="ProjectId" id="2jzV8yKLCMtCoYeDNMJuzlSjd27" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <ConfirmationsSetting value="2" id="Add" />
@@ -129,24 +77,47 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_ADD_EXTERNAL_FILES": "true",
-    "Python.inference.executor": "Run",
-    "Python.main.executor": "Run",
-    "Python.requirements.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;Python.inference.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.requirements.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\old_models" />
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3" />
     </key>
   </component>
   <component name="RunManager">
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="tflite_model_maker_v3" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="requirements" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="tflite_model_maker_v3" />
       <option name="ENV_FILES" value="" />
@@ -169,6 +140,11 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.main" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
