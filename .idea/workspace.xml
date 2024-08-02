@@ -4,52 +4,149 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4a3f7e06-2b93-4814-a679-5d7e51324022" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_quantized.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_quantized_4_75.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old_models/efficientdet_lite0_whole_50_epoch_no_quant.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-234731_png_jpg.rf.0c072af34e2c5ba638e03928ec3cb87d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235316_png_jpg.rf.958a6dc69daf05e0e69f9edfdf342208.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235810_png_jpg.rf.f53d079e71ba8aad8ab48e36658de3d2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235838_png_jpg.rf.bc178a5b103eeca1df32e3640308fe1f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-12-235939_png_jpg.rf.e04250ad64049f2f78e303baf868983d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-165533_png_jpg.rf.8c1d795c05eec76cd11319c99744c5dd.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-165852_png_jpg.rf.6a9c32ed1ef8b2795b255d7c859841af.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-170020_png_jpg.rf.ecbe1ef6350285991d022a66171c672d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-170542_png_jpg.rf.49509152b06bde8978a6d190dec7dfac.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-190331_png_jpg.rf.023b06786f8417c6becdc1023cf9bcd2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-190516_png_jpg.rf.2d841976a970855068e30ec670ee8f39.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-191131_png_jpg.rf.dbd226c1cb2bfdbf7305ce696f2254b9.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-193515_png_jpg.rf.115a4f3dc5770f3d014e0a0aae51867d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-212638_png_jpg.rf.7896062f264bf92fe9482c9aef44dfaf.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-212957_png_jpg.rf.eaa8e73888837ad8c0e9981f697d210b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-213348_png_jpg.rf.eddd920f1e582b4f44840644ea03541e.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214103_png_jpg.rf.e6b35509a4c6be456ed6e77060388b61.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214225_png_jpg.rf.a78453b4cd324c3e07f8c77a5f923a0d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214517_png_jpg.rf.75202df91adb69464403a472a58fb39a.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-214853_png_jpg.rf.c6e416c0421708beae8e87f1f22e944f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-215358_png_jpg.rf.e9c009f6ca3d8b859929fd0b146e650f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-215445_png_jpg.rf.511cedd91ca08a7b2cc07f340bf8e4c7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220022_png_jpg.rf.7fab50083273ee4c52e64eba05cbec22.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220637_png_jpg.rf.f3f5e70ab051f07633ec43cb2fbdd157.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220801_png_jpg.rf.877e5e4dee9ead2f32b3166d709ca22c.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-13-220821_png_jpg.rf.d3b1125a1586b53e6910f9af78343567.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193301_png_jpg.rf.c0a22cd99ea63b946bd61b31fb562d0f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193417_png_jpg.rf.fc95d3c90dd6e12bedb5e410b1b089c7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193656_png_jpg.rf.dfcca40b2dbd65e3dc282b79d69dd292.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193729_png_jpg.rf.631c025c3da82b9cf9ddd5fe75ccaeb5.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193734_png_jpg.rf.4608e26b41654c0ad1ab34a11bdb6cfa.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-193818_png_jpg.rf.6b3166b84a84dac4b243fe836600219a.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-194216_png_jpg.rf.ef1ab9fc8037d5fcf52d272acd199f90.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-194537_png_jpg.rf.4a7184a77b8b16f79a22422783fab8e4.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195312_png_jpg.rf.5420d28c552cc7de1a8a17c94a4155d3.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195316_png_jpg.rf.ae40891d6342fff89e13888001f0f523.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195328_png_jpg.rf.6e58868c932d7416bea16b17efff841d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_quant/-2022-03-14-195446_png_jpg.rf.74d533450f691da40f8f1f8f9431c325.jpg" afterDir="false" />
+    <list default="true" id="4a3f7e06-2b93-4814-a679-5d7e51324022" name="Changes" comment="added some quantization">
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-12-234731_png_jpg.rf.0c072af34e2c5ba638e03928ec3cb87d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-12-235316_png_jpg.rf.958a6dc69daf05e0e69f9edfdf342208.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-12-235810_png_jpg.rf.f53d079e71ba8aad8ab48e36658de3d2.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-12-235838_png_jpg.rf.bc178a5b103eeca1df32e3640308fe1f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-12-235939_png_jpg.rf.e04250ad64049f2f78e303baf868983d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-165533_png_jpg.rf.8c1d795c05eec76cd11319c99744c5dd.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-165852_png_jpg.rf.6a9c32ed1ef8b2795b255d7c859841af.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-170020_png_jpg.rf.ecbe1ef6350285991d022a66171c672d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-170542_png_jpg.rf.49509152b06bde8978a6d190dec7dfac.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-190331_png_jpg.rf.023b06786f8417c6becdc1023cf9bcd2.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-190516_png_jpg.rf.2d841976a970855068e30ec670ee8f39.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-191131_png_jpg.rf.dbd226c1cb2bfdbf7305ce696f2254b9.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-193515_png_jpg.rf.115a4f3dc5770f3d014e0a0aae51867d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-212638_png_jpg.rf.7896062f264bf92fe9482c9aef44dfaf.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-212957_png_jpg.rf.eaa8e73888837ad8c0e9981f697d210b.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-213348_png_jpg.rf.eddd920f1e582b4f44840644ea03541e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-214103_png_jpg.rf.e6b35509a4c6be456ed6e77060388b61.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-214225_png_jpg.rf.a78453b4cd324c3e07f8c77a5f923a0d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-214517_png_jpg.rf.75202df91adb69464403a472a58fb39a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-214853_png_jpg.rf.c6e416c0421708beae8e87f1f22e944f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-215358_png_jpg.rf.e9c009f6ca3d8b859929fd0b146e650f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-215445_png_jpg.rf.511cedd91ca08a7b2cc07f340bf8e4c7.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-220022_png_jpg.rf.7fab50083273ee4c52e64eba05cbec22.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-220637_png_jpg.rf.f3f5e70ab051f07633ec43cb2fbdd157.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-220801_png_jpg.rf.877e5e4dee9ead2f32b3166d709ca22c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-13-220821_png_jpg.rf.d3b1125a1586b53e6910f9af78343567.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-193301_png_jpg.rf.c0a22cd99ea63b946bd61b31fb562d0f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-193417_png_jpg.rf.fc95d3c90dd6e12bedb5e410b1b089c7.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-193729_png_jpg.rf.631c025c3da82b9cf9ddd5fe75ccaeb5.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-193734_png_jpg.rf.4608e26b41654c0ad1ab34a11bdb6cfa.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-193818_png_jpg.rf.6b3166b84a84dac4b243fe836600219a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-194216_png_jpg.rf.ef1ab9fc8037d5fcf52d272acd199f90.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-194537_png_jpg.rf.4a7184a77b8b16f79a22422783fab8e4.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-195312_png_jpg.rf.5420d28c552cc7de1a8a17c94a4155d3.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-195316_png_jpg.rf.ae40891d6342fff89e13888001f0f523.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-195328_png_jpg.rf.6e58868c932d7416bea16b17efff841d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-195446_png_jpg.rf.74d533450f691da40f8f1f8f9431c325.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-200022_png_jpg.rf.725c0d82b83222efd9023a6e2d34e1a7.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-200034_png_jpg.rf.da2e45f387f11ac7c3a32fd3d51c17e4.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-200131_png_jpg.rf.d3434e2a41646650061abcbfb0fbc9aa.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-200304_png_jpg.rf.982d60557a01c30ef1314ede3a56f824.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-200335_png_jpg.rf.daeaf5e798a728184ca7c89971bd2d7f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-200554_png_jpg.rf.dad107df0dfcec7c83c1f76830cce4ac.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-200604_png_jpg.rf.fbd8cf9453d163d1c730bb9c49047940.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/100_jpg.rf.0f74eaefed96853b03c17da5a8ceda6f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/100_jpg.rf.858294fcee5ffcebe96a1d5cca347ec0.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/109_jpg.rf.48c4443a33eb92fade4ee60026be649b.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/109_jpg.rf.8c4801996f3333d45d7602ce0af2451e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/109_jpg.rf.cdec148ec9259d428c699d836c80c170.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/118_jpg.rf.82b1b6de750076eb346df813225a2432.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/118_jpg.rf.f47fa188f226dc36a9507c11f94655af.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/128-3-_jpg.rf.e69581b8792f41269ee673726c24600a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/129_jpg.rf.790a75bc64537fb623a7c7463e464758.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/13-4-_jpg.rf.bc92e37673f8da04d8eb8812b6a688f4.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/130-2-_jpg.rf.ad5ee46e671acd3c9f3540e1caff050e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/130_jpg.rf.57fa2d83991c93a51dd28ce7642a9237.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/133_jpg.rf.32a8e4138ad9bb27a7245c41e760346f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/133_jpg.rf.bb793f7e82a7b46d2f1cd6f28cfe412c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/137_jpg.rf.ef21928ffff9429485e214505f90ed4c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/141-2-_jpg.rf.e866a29edbfacd78ee683f737e902b2f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/149_jpg.rf.8a6b805464b428d0457fd653ef0fcea0.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/149_jpg.rf.e02c475bd61233a39e68884a07f2b7bd.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/159_jpg.rf.68ca180089c26ab903d0dec6c9b2f0fb.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/160_jpg.rf.722223166a393e3e40a166a3dc49e871.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/169-2-_jpg.rf.9598e5990e3cdc5ba48700d1897ac642.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/17_jpg.rf.ec261e13703e72a21fd419810ee715be.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/183_jpg.rf.f9acae8e4550d5a7e9d5b9bbce998370.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/185_jpg.rf.ac03fbc9c298509ba59d235ba2f474e8.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/188_jpg.rf.337e14b4ca34f464e21782d793496800.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/188_jpg.rf.c44f4cbf817afbd7e7855803cac062ee.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/190_jpg.rf.84dfab4f4e66d17a1b1672d9c74a94f6.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/202_jpg.rf.1625342bead7fd34bd326b273fe90fd9.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/204_jpg.rf.beb0c66f1dd4a00b338a5bc6a6d71aa1.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/207_jpg.rf.5353bd8ef1680f03398a81992dfeba5f.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/209_jpg.rf.dac9f32a177df2527ac09e452ae776de.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/219_jpg.rf.b240840eb1e64593a8df4447dd0cff39.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/22-4-_jpg.rf.a9fa8e6667266c8844530ba522687e27.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/225_jpg.rf.8d26f2be787d516681c31308259726d6.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/225_jpg.rf.df7f95413937ec57b23d7dbd8bc507d8.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/240_jpg.rf.64707079e7afdc1f3efbeaab0e1ace74.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/247-2-_jpg.rf.16e7f1287d9cb6ae6ce25f19ad772624.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/249_jpg.rf.201b27daf10f9550a8f7bd4ff31b4b53.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/250_jpg.rf.227de34285cacfc495e6c727c24d2b6d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/258_jpg.rf.9cd3cb981a3d13a51cee231dbc9ec00c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/25_jpg.rf.510834c254240d653104efcacb2a5d87.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/279_jpg.rf.ca9088a36019a6027ba7720cc46b9b42.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/280_jpg.rf.bc6d73cb3dd64a341c2dcdac677879c0.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/280_jpg.rf.e228540879ef2a4e263f98fab5026fb5.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/282-2-_jpg.rf.f3d398a8c05268a2201b4b399bc4a226.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/284-2-_jpg.rf.a31960dee854ecec1b6f218b54f69e41.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/29-5-_jpg.rf.84018190ad40c7ac568a872a80824b99.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/305_jpg.rf.67650a54b78f77bedc1bf4ac77b3c7c6.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/305_jpg.rf.8e9d209f1fa00733a9e3f7de9bb7bc68.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/307_jpg.rf.1d682b24c36b50dc47b341de1fcc8550.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/311_jpg.rf.acd859ed43c8eb605aa414eac269af52.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/319_jpg.rf.e885c54aea84bf8913851296b21de6e4.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/31_jpg.rf.4aad1ddb3b64398e0c24f921cfe9dac8.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/339_jpg.rf.b8b9abd671b744e812f91780bec3773a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/36_jpg.rf.22f4e856eb57059f04d6c35adf32f498.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/371_jpg.rf.5f8706326d04a46a4b8ad10a5eb6f95a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/373_jpg.rf.a881f0a283034a40b425f389eeae309b.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/392_jpg.rf.0ca8b7a872bca52a84f6ceb19b304bd9.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/396_jpg.rf.bc888e7bace7ebc647b5a675afbd6a6e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/4-5-_jpg.rf.0eaf1b2f32e0cb2cd009dea50e192eb0.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/4-6-_jpg.rf.f7f291cde1ab496f73857574d3afa2c3.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/41-3-_jpg.rf.a026e084943bd66a38c2abe8459066b2.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/413_jpg.rf.e87b76c3756bd367b0abf3eea8b8861e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/43-3-_jpg.rf.d95a46cd696ad576c92eb518eb81bc36.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/43_jpg.rf.15f28f953f0f435b5204be2205dd537e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/43_jpg.rf.f1f06188ffd2ef13fe51f2b61c3e8c05.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/44_jpg.rf.77e07f89497c4133999aedd3f2eb814c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/45-2-_jpg.rf.78d7caa07890ff8607d3cc145bf08f75.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/473_jpg.rf.759b9c241d22643583557e1af38cd13b.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/476_jpg.rf.ca67cb32d8cc93abc13d47223dd1dcbe.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/48-3-_jpg.rf.03718221939b9b5038e2baa559ebfb72.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/49_jpg.rf.7231da061e269686c98ecd1c4b16ed46.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/49_jpg.rf.7e71c4f7b2fa689bf294437c7d7ba18e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/4_jpg.rf.bd7c198d18cc837b0902d1b800ab6cb0.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/5-5-_jpg.rf.bae66dc1293ffb471d5184b2b218af82.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/52-3-_jpg.rf.38db502af8d686064e088cf17e2a6fee.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/56-3-_jpg.rf.2c83b8957fd14e3535bc01dfe1b34d62.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/57_jpg.rf.88fd74c913d4f5c62a8b76ed52bcad89.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/58-3-_jpg.rf.0ef0ebbd5ea34aa420f405695ce1cd87.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/59_jpg.rf.b97bc1f271416f5616ed1c72659f312c.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/inference.py" beforeDir="false" afterPath="$PROJECT_DIR$/inference.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/efficientdet_lite0_whole.tflite" beforeDir="false" afterPath="$PROJECT_DIR$/models/efficientdet_lite0_whole.tflite" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-13-220801_png_jpg.rf.877e5e4dee9ead2f32b3166d709ca22c.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-13-220821_png_jpg.rf.d3b1125a1586b53e6910f9af78343567.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-193301_png_jpg.rf.c0a22cd99ea63b946bd61b31fb562d0f.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-193417_png_jpg.rf.fc95d3c90dd6e12bedb5e410b1b089c7.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-193656_png_jpg.rf.dfcca40b2dbd65e3dc282b79d69dd292.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/test_no_quant_epochs_75_batch_16/-2022-03-14-193656_png_jpg.rf.dfcca40b2dbd65e3dc282b79d69dd292.jpg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-193729_png_jpg.rf.631c025c3da82b9cf9ddd5fe75ccaeb5.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-193734_png_jpg.rf.4608e26b41654c0ad1ab34a11bdb6cfa.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-193818_png_jpg.rf.6b3166b84a84dac4b243fe836600219a.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-194216_png_jpg.rf.ef1ab9fc8037d5fcf52d272acd199f90.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-194537_png_jpg.rf.4a7184a77b8b16f79a22422783fab8e4.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-195312_png_jpg.rf.5420d28c552cc7de1a8a17c94a4155d3.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-195316_png_jpg.rf.ae40891d6342fff89e13888001f0f523.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-195328_png_jpg.rf.6e58868c932d7416bea16b17efff841d.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_quant/-2022-03-14-195446_png_jpg.rf.74d533450f691da40f8f1f8f9431c325.jpg" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -162,9 +259,20 @@
       <option name="presentableId" value="Default" />
       <updated>1722389736639</updated>
     </task>
+    <task id="LOCAL-00001" summary="added some quantization">
+      <option name="closed" value="true" />
+      <created>1722530990563</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1722530990563</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="added some quantization" />
+    <option name="LAST_COMMIT_MESSAGE" value="added some quantization" />
   </component>
 </project>
