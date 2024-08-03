@@ -50,8 +50,9 @@ input_shape = input_details[0]['shape']
 input_size = input_shape[1:3]
 
 # Iterate through the test data
-test_dir = 'new data/test'
-output_dir = 'test_no_quant_epochs_75_batch_16'  # Directory to save the output images
+test_dir = 'augmented_images_for_training'
+original_test = 'data/test'
+output_dir = 'test_no_quant_epochs_75_batch_16_with_new_test'  # Directory to save the output images
 os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
 
 """
@@ -85,7 +86,7 @@ for filename in os.listdir(test_dir):
         num_detections = int(num_detections.item())
 
         # Parse the XML file to get ground truth annotations
-        ground_truth = parse_xml(xml_path)
+        # ground_truth = parse_xml(xml_path)
 
         # Find the detection with the highest score
         max_score_index = np.argmax(scores[0][:num_detections])
