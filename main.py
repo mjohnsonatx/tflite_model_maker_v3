@@ -1,11 +1,7 @@
+import logging
 import os
 import tensorflow as tf
-from tensorflow_examples.lite.model_maker.core.task.configs import QuantizationConfig
-
-from tflite_model_maker import object_detector
-from tflite_model_maker import model_spec
-import numpy as np
-
+from tflite_model_maker import object_detector, model_spec
 
 EXPORT_DIR = 'models'
 DATA_DIR = 'data'
@@ -13,40 +9,107 @@ TRAIN_DIR = 'combined data with original data'
 #TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test')
-BATCH_SIZE = 2
+BATCH_SIZE = 32
+EPOCHS = 50
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
+SAVED_MODEL_PATH = os.path.join(EXPORT_DIR, 'saved_model')
+
+def train_model(model, train_data, validation_data, epochs):
+    model.train(
+        train_data=train_data,
+        validation_data=validation_data,
+        epochs=epochs,
+        batch_size=BATCH_SIZE
+    )
+    return model
+
+
 if __name__ == "__main__":
-    # os.makedirs(EXPORT_DIR, exist_ok=True)
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+
+    spec = model_spec.get(ARCHITECTURE)
+
+    train = object_detector.DataLoader.from_pascal_voc(
+        images_dir=TRAIN_DIR,
+        annotations_dir=TRAIN_DIR,
+        label_map={1: "barbell"}
+    )
+
+    valid = object_detector.DataLoader.from_pascal_voc(
+        images_dir=VALID_DIR,
+        annotations_dir=VALID_DIR,
+        label_map={1: "barbell"}
+    )
+
+    test = object_detector.DataLoader.from_pascal_voc(
+        images_dir=TEST_DIR,
+        annotations_dir=TEST_DIR,
+        label_map={1: "barbell"}
+    )
+
+    print(f"Number of training images: {train.size}")
+    print(f"Number of validation images: {valid.size}")
+    print(f"Number of test images: {test.size}")
+
+    # if os.path.exists(SAVED_MODEL_PATH):
+    #     print("Loading existing model...")
+    #     model = tf.keras.models.load_model(SAVED_MODEL_PATH)
+    #     # Wrap the loaded model in an ObjectDetector
+    #     model = object_detector.ObjectDetector(model, model_spec=spec)
+    # else:
+    #     print("Creating new model...")
+    model = object_detector.create(
+        train_data=train,
+        model_spec=spec,
+        batch_size=BATCH_SIZE,
+        train_whole_model=TRAIN_WHOLE_MODEL,
+        validation_data=valid,
+        epochs=0,  # Set to 0 as we'll train manually
+        do_train=False
+    )
+
+
+        # Train the model
+    model = train_model(model, train, valid, EPOCHS)
+
+    # Evaluate the model
+    print("Evaluating the model...")
+    metrics = model.evaluate(test, batch_size=BATCH_SIZE)
+    print(f"Evaluation metrics: {metrics}")
+
+    tflite_filename = f'{ARCHITECTURE}.tflite'
+
+    if TRAIN_WHOLE_MODEL:
+        tflite_filename = f'{ARCHITECTURE}_whole.tflite'
+
+    # Save the model as TensorFlow SavedModel
+    # Specify the batch size for the saved model
+    pre_mode = 'infer'  # Specify the pre-processing mode
+    post_mode = 'global'  # Specify the post-processing mode, set to tflite when training the last model before conversion
+
+    print("Model saved as Tensorflow")
+    model.export(
+        SAVED_MODEL_PATH,
+        batch_size=BATCH_SIZE,
+        pre_mode=pre_mode,
+        post_mode=post_mode
+    )
+
+    print("Exporting the model...")
+    model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
     #
-    # spec = model_spec.get(ARCHITECTURE)
-    #
-    # train = object_detector.DataLoader.from_pascal_voc(
-    #     images_dir=TRAIN_DIR,
-    #     annotations_dir=TRAIN_DIR,
-    #     label_map={1: "barbell"}
-    # )
-    #
-    # valid = object_detector.DataLoader.from_pascal_voc(
-    #     images_dir=VALID_DIR,
-    #     annotations_dir=VALID_DIR,
-    #     label_map={1: "barbell"}
-    # )
-    #
-    # test = object_detector.DataLoader.from_pascal_voc(
-    #     images_dir=TEST_DIR,
-    #     annotations_dir=TEST_DIR,
-    #     label_map={1: "barbell"}
-    # )
-    #
-    # print(f"Number of training images: {train.size}")
-    # print(f"Number of validation images: {valid.size}")
-    # print(f"Number of test images: {test.size}")
-    #
+    # # Export quantized TFLite model
+    # model.export(export_dir=EXPORT_DIR,
+    #              tflite_filename=f'{ARCHITECTURE}_retrained_quantized.tflite',
+    #              quantization_config=model.get_default_quantization_config(representative_data=test))
+    # print(f"Quantized model exported as TFLite to {EXPORT_DIR}/{ARCHITECTURE}_retrained_quantized.tflite")
+
+
     # model = object_detector.create(
     #     train_data=train,
-    #     epochs = 65,
+    #     epochs = 30,
     #     model_spec=spec,
     #     validation_data=valid,
     #     batch_size=BATCH_SIZE,
@@ -65,17 +128,10 @@ if __name__ == "__main__":
     #
     # print("Exporting the model...")
     # model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
-    #
-    # print("Exporting a quantized model...")
 
-    
 
-    # need to add representative data
-    quantization_config = QuantizationConfig(
-        inference_input_type=tf.float32,  # Set input tensor to UINT8
-        inference_output_type=tf.float32  # Set output tensor to UINT8
-    )
-    model.export(export_dir=EXPORT_DIR, tflite_filename='model_quantized_uint8.tflite', quantization_config=quantization_config)
+
+
 
 """"
 Example for representive data
