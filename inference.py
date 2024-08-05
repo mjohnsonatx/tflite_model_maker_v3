@@ -35,7 +35,7 @@ def preprocess_image(image, input_size):
 
 
 # Load the TFLite model
-interpreter = tf.lite.Interpreter(model_path='models/efficientdet_lite0_whole_epochs_75_batch_16.tflite')
+interpreter = tf.lite.Interpreter(model_path='old_models/efficientdet_lite0_whole_b2e50_original_data_augmented.tflite')
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
@@ -49,10 +49,10 @@ for output_detail in output_details:
 input_shape = input_details[0]['shape']
 input_size = input_shape[1:3]
 
-# Iterate through the test data
+# Iterate through the test old data
 test_dir = 'augmented_images_for_training'
-original_test = 'data/test'
-output_dir = 'test_no_quant_epochs_75_batch_16_with_new_test'  # Directory to save the output images
+original_test = 'old data/test'
+output_dir = 'test_lite0_b2_e50_original_data_with_augment'  # Directory to save the output images
 os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
 
 """

@@ -48,6 +48,6 @@ def draw_bounding_boxes(image_directory, num_images):
         cv2.destroyAllWindows()
 
 # Example usage
-image_directory = 'augmented_images_for_training'
+image_directory = 'augmented data with added rotation'
 num_images = 15  # Number of images to process
 draw_bounding_boxes(image_directory, num_images)
