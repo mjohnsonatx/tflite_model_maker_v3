@@ -52,7 +52,7 @@ input_size = input_shape[1:3]
 # Iterate through the test old data
 test_dir = 'augmented_images_for_training'
 original_test = 'old data/test'
-output_dir = 'test_lite0_b2_e50_original_data_with_augment'  # Directory to save the output images
+output_dir = 'test_lite0_b2_e65_original_data_with_augment'  # Directory to save the output images
 os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
 
 """
