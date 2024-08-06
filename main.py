@@ -1,6 +1,7 @@
 import logging
 import os
 import tensorflow as tf
+import tflite_model_maker
 from tflite_model_maker import object_detector, model_spec
 
 EXPORT_DIR = 'models'
@@ -9,12 +10,15 @@ TRAIN_DIR = 'combined data with original data'
 #TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test')
-BATCH_SIZE = 32
+BATCH_SIZE = 4
 EPOCHS = 50
+BACKBONE = 'efficientnetv2_b1_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
 SAVED_MODEL_PATH = os.path.join(EXPORT_DIR, 'saved_model')
+
+LABEL_MAP={1: "barbell"}
 
 def train_model(model, train_data, validation_data, epochs):
     model.train(
@@ -34,44 +38,58 @@ if __name__ == "__main__":
     train = object_detector.DataLoader.from_pascal_voc(
         images_dir=TRAIN_DIR,
         annotations_dir=TRAIN_DIR,
-        label_map={1: "barbell"}
+        label_map=LABEL_MAP
     )
 
     valid = object_detector.DataLoader.from_pascal_voc(
         images_dir=VALID_DIR,
         annotations_dir=VALID_DIR,
-        label_map={1: "barbell"}
+        label_map=LABEL_MAP
     )
 
     test = object_detector.DataLoader.from_pascal_voc(
         images_dir=TEST_DIR,
         annotations_dir=TEST_DIR,
-        label_map={1: "barbell"}
+        label_map=LABEL_MAP
+    )
+
+    representative_data = object_detector.DataLoader.from_pascal_voc(
+        images_dir='representative data',
+        annotations_dir='representative data',
+        label_map=LABEL_MAP
     )
 
     print(f"Number of training images: {train.size}")
     print(f"Number of validation images: {valid.size}")
     print(f"Number of test images: {test.size}")
 
-    # if os.path.exists(SAVED_MODEL_PATH):
-    #     print("Loading existing model...")
-    #     model = tf.keras.models.load_model(SAVED_MODEL_PATH)
-    #     # Wrap the loaded model in an ObjectDetector
-    #     model = object_detector.ObjectDetector(model, model_spec=spec)
-    # else:
-    #     print("Creating new model...")
-    model = object_detector.create(
-        train_data=train,
-        model_spec=spec,
-        batch_size=BATCH_SIZE,
-        train_whole_model=TRAIN_WHOLE_MODEL,
-        validation_data=valid,
-        epochs=0,  # Set to 0 as we'll train manually
-        do_train=False
-    )
+    if os.path.exists(SAVED_MODEL_PATH):
+        print("Loading existing model...")
+        loaded_model = tf.saved_model.load(SAVED_MODEL_PATH)
 
+        # Create the model spec
+        model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+            model_name='efficientdet-lite0',
+            uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+            hparams={'max_instances_per_image': 20, 'backbone_name': BACKBONE}
+        )
 
-        # Train the model
+        model = object_detector.ObjectDetector(model_spec, LABEL_MAP, representative_data)
+        model.model = loaded_model
+
+    else:
+        print("Creating new model...")
+        model = object_detector.create(
+            train_data=train,
+            model_spec=spec,
+            batch_size=BATCH_SIZE,
+            train_whole_model=TRAIN_WHOLE_MODEL,
+            validation_data=valid,
+            epochs=0,  # Set to 0 as we'll train manually
+            do_train=False
+        )
+
+    # Train the model
     model = train_model(model, train, valid, EPOCHS)
 
     # Evaluate the model

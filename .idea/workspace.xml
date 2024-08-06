@@ -4,76 +4,117 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4a3f7e06-2b93-4814-a679-5d7e51324022" name="Changes" comment="tried to implement some form of early stopping">
-      <change afterPath="$PROJECT_DIR$/QuantitizeModel.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old_models/efficientdet_lite0_whole_b2_e65_with_augmented_data.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old_models/efficientdet_lite0_whole_b2e50_original_data_augmented.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old_models/efficientdet_lite0_whole_b4e50_original_data_with_augment.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old_models/efficientdet_lite1_whole_orginial_data_with_augment.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_0_218_jpg.rf.cd38da9a505780acb62b75d2dbe22913.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_100_-2022-03-14-195838_png.rf.0b2839bddfa8ffe71bf988a20563d7b1.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_101_-2022-03-14-193718_png.rf.03aea740c6491c47fa8069f552a015cb.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_102_57_jpg.rf.d2d169ee4236c8df60be52ac3d7e42be.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_103_330_jpg.rf.15a3d4c71ade5b89b53d9f304ea17c6f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_104_238_jpg.rf.2a5a13a489c25149c08733af833e5ef7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_105_72_jpg.rf.916e2c8b488f41c5b926094e7998aea8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_106_221_jpg.rf.adde2cd1358b7155a6a62f8dba9a317b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_107_82_jpg.rf.a5df5fdabae5a8ed6635ec94dba7d2c8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_108_21_jpg.rf.b7726e662f3d11978036e2ca69692e17.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_109_-2022-03-12-233600_png_jpg.rf.0ede87ad6a1e6b65df6d1587b3131f9b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_10_-2022-03-14-194120_png_jpg.rf.3e524fbb6399a7931e7faec59a536470.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e50_original_data_with_augment/augmented_110_4-4-_jpg.rf.51f2c774b3d9705a26759cc7d1f20110.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_0_218_jpg.rf.cd38da9a505780acb62b75d2dbe22913.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_100_-2022-03-14-195838_png.rf.0b2839bddfa8ffe71bf988a20563d7b1.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_101_-2022-03-14-193718_png.rf.03aea740c6491c47fa8069f552a015cb.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_102_57_jpg.rf.d2d169ee4236c8df60be52ac3d7e42be.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_103_330_jpg.rf.15a3d4c71ade5b89b53d9f304ea17c6f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_104_238_jpg.rf.2a5a13a489c25149c08733af833e5ef7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_105_72_jpg.rf.916e2c8b488f41c5b926094e7998aea8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_106_221_jpg.rf.adde2cd1358b7155a6a62f8dba9a317b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_107_82_jpg.rf.a5df5fdabae5a8ed6635ec94dba7d2c8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_108_21_jpg.rf.b7726e662f3d11978036e2ca69692e17.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_109_-2022-03-12-233600_png_jpg.rf.0ede87ad6a1e6b65df6d1587b3131f9b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_10_-2022-03-14-194120_png_jpg.rf.3e524fbb6399a7931e7faec59a536470.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_110_4-4-_jpg.rf.51f2c774b3d9705a26759cc7d1f20110.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_111_54_jpg.rf.7a90af7c3b315df518dae598e137ed4c.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_112_-2022-03-14-194305_png.rf.74fe38db648b6f8f7f80b63cf9a413ea.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_113_124_jpg.rf.8cb58edf210cc2a7cd607acf0012c67b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_114_396_jpg.rf.27c8b0c36c6b3a36aafc092d2dcd288d.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_115_461_jpg.rf.aaf2bd22a0c71b652ae4c6f95198421a.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_116_-2022-03-14-194908_png_jpg.rf.1c8e411d3619993302ccf958d6ae3f85.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_117_35-2-_jpg.rf.4ad3e9165e8ef290c929437b812e2fc8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_118_-2022-03-14-200539_png_jpg.rf.0be2d099f63f50cfccc2b30fe49c1473.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_119_6_jpg.rf.2433d2947bf8a92cbe90943a6ee59689.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_11_-2022-03-13-194301_png_jpg.rf.d7c6bc762f00d1162fa90682628d6b91.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_120_434_jpg.rf.88ac1adcbf8805174a477f3eab20a0bd.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_121_60_jpg.rf.8e5975c2fb27eb9f0d3d932412d54e5c.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_122_-2022-03-14-193723_png_jpg.rf.d0db084ce85332413a4a3f4b6e857ceb.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_123_-2022-03-13-170520_png.rf.c5a12ec87c872e0d52294a5b2c210162.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_124_72_jpg.rf.69a913bbf382fdfe305ba13dc9784033.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b2_e65_original_data_with_augment/augmented_125_-2022-03-14-194744_png_jpg.rf.dc082932632ef81a039fd927e532d4d8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_0_218_jpg.rf.cd38da9a505780acb62b75d2dbe22913.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_100_-2022-03-14-195838_png.rf.0b2839bddfa8ffe71bf988a20563d7b1.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_101_-2022-03-14-193718_png.rf.03aea740c6491c47fa8069f552a015cb.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_102_57_jpg.rf.d2d169ee4236c8df60be52ac3d7e42be.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_103_330_jpg.rf.15a3d4c71ade5b89b53d9f304ea17c6f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_104_238_jpg.rf.2a5a13a489c25149c08733af833e5ef7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_105_72_jpg.rf.916e2c8b488f41c5b926094e7998aea8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_106_221_jpg.rf.adde2cd1358b7155a6a62f8dba9a317b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_107_82_jpg.rf.a5df5fdabae5a8ed6635ec94dba7d2c8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_108_21_jpg.rf.b7726e662f3d11978036e2ca69692e17.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite0_b4_e50_original_data_with_augment/augmented_109_-2022-03-12-233600_png_jpg.rf.0ede87ad6a1e6b65df6d1587b3131f9b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_0_218_jpg.rf.cd38da9a505780acb62b75d2dbe22913.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_100_-2022-03-14-195838_png.rf.0b2839bddfa8ffe71bf988a20563d7b1.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_101_-2022-03-14-193718_png.rf.03aea740c6491c47fa8069f552a015cb.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_102_57_jpg.rf.d2d169ee4236c8df60be52ac3d7e42be.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_103_330_jpg.rf.15a3d4c71ade5b89b53d9f304ea17c6f.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_104_238_jpg.rf.2a5a13a489c25149c08733af833e5ef7.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_105_72_jpg.rf.916e2c8b488f41c5b926094e7998aea8.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_106_221_jpg.rf.adde2cd1358b7155a6a62f8dba9a317b.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_lite1_b4_e50_original_data_with_augment/augmented_107_82_jpg.rf.a5df5fdabae5a8ed6635ec94dba7d2c8.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/inference.py" beforeDir="false" afterPath="$PROJECT_DIR$/inference.py" afterDir="false" />
+    <list default="true" id="4a3f7e06-2b93-4814-a679-5d7e51324022" name="Changes" comment="starting a batch-decay strategy">
+      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_whole.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_wholeV1_b32_e50.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/efficientdet_lite0_wholeV2_b16_e50.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v1/saved_model/model.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v1/saved_model/saved_model.pb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v1/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v1/saved_model/variables/variables.index" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v2/saved_model/model.tflite" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v2/saved_model/saved_model.pb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v2/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/v2/saved_model/variables/variables.index" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/074ecaf9-PXL_20210730_1219513002.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/074ecaf9-PXL_20210730_1219513002.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/2_png.rf.22ac5642b2a044baba47e683c886e06c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/2_png.rf.22ac5642b2a044baba47e683c886e06c.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/2_png.rf.9d3f4be689f88ff99d0c070878d7bea0.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/2_png.rf.9d3f4be689f88ff99d0c070878d7bea0.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/2_png.rf.b86f42ac8e68f44501edf5c0faf90ef1.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/2_png.rf.b86f42ac8e68f44501edf5c0faf90ef1.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/30a5dc1f736b48ab2828d883ddd0e2ee_jpg.rf.1c3573d70f796efc1b9893161c88511d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/30a5dc1f736b48ab2828d883ddd0e2ee_jpg.rf.1c3573d70f796efc1b9893161c88511d.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/30a5dc1f736b48ab2828d883ddd0e2ee_jpg.rf.a4be372ffa828e9a42e5bcf99d79a724.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/30a5dc1f736b48ab2828d883ddd0e2ee_jpg.rf.a4be372ffa828e9a42e5bcf99d79a724.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/30a5dc1f736b48ab2828d883ddd0e2ee_jpg.rf.c849083e50b3e898703bc44824f39265.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/30a5dc1f736b48ab2828d883ddd0e2ee_jpg.rf.c849083e50b3e898703bc44824f39265.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/3a35fcdd-PXL_20230310_064730908.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/3a35fcdd-PXL_20230310_064730908.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/3fd00c3c-PXL_20220113_140609515.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/3fd00c3c-PXL_20220113_140609515.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/49e54357293b346be495d8a2f74c6085_jpg.rf.c0062090abefab15c3328bc30debd0e3.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/49e54357293b346be495d8a2f74c6085_jpg.rf.c0062090abefab15c3328bc30debd0e3.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/49e54357293b346be495d8a2f74c6085_jpg.rf.fe237f32f9162c6f7fcd6ed1775918fe.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/49e54357293b346be495d8a2f74c6085_jpg.rf.fe237f32f9162c6f7fcd6ed1775918fe.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/49e54357293b346be495d8a2f74c6085_jpg.rf.ff6d388c09b98d271bfd08d01fb3537c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/49e54357293b346be495d8a2f74c6085_jpg.rf.ff6d388c09b98d271bfd08d01fb3537c.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4_png.rf.5c9d1c416f53c3c727f0d3d068e5ea5d.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4_png.rf.5c9d1c416f53c3c727f0d3d068e5ea5d.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4_png.rf.945d8c879105cd88a11b0359f0890007.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4_png.rf.945d8c879105cd88a11b0359f0890007.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4_png.rf.df62788c513bca3f2346f58605a8dc01.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4_png.rf.df62788c513bca3f2346f58605a8dc01.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4f7ae13386b4a584fcc2223009d70ff8_jpg.rf.05f9fbb240f8fff822114dd2852bfbd3.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4f7ae13386b4a584fcc2223009d70ff8_jpg.rf.05f9fbb240f8fff822114dd2852bfbd3.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4f7ae13386b4a584fcc2223009d70ff8_jpg.rf.417520141e93528e243b5065d8c8710b.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4f7ae13386b4a584fcc2223009d70ff8_jpg.rf.417520141e93528e243b5065d8c8710b.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4f7ae13386b4a584fcc2223009d70ff8_jpg.rf.7a3636aab035ee16617e1717a65e06ed.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/4f7ae13386b4a584fcc2223009d70ff8_jpg.rf.7a3636aab035ee16617e1717a65e06ed.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/59b03490-PXL_20211207_080713390.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/59b03490-PXL_20211207_080713390.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5K2IMUZ4THZPCKWELAEKCBMUG4_jpg.rf.0b327f588aa9e2d8a0c1b17f9d5e2afa.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5K2IMUZ4THZPCKWELAEKCBMUG4_jpg.rf.0b327f588aa9e2d8a0c1b17f9d5e2afa.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5K2IMUZ4THZPCKWELAEKCBMUG4_jpg.rf.2f262891e3142ce88217fd8c0f44497c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5K2IMUZ4THZPCKWELAEKCBMUG4_jpg.rf.2f262891e3142ce88217fd8c0f44497c.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5K2IMUZ4THZPCKWELAEKCBMUG4_jpg.rf.85fe085f6ba30ac93ebdd5fb84b1e8be.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5K2IMUZ4THZPCKWELAEKCBMUG4_jpg.rf.85fe085f6ba30ac93ebdd5fb84b1e8be.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5_png.rf.62371a697af5d7620f5ce13051c260dc.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5_png.rf.62371a697af5d7620f5ce13051c260dc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5_png.rf.aed1f60e8bf9bd9761217095612e4cca.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5_png.rf.aed1f60e8bf9bd9761217095612e4cca.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5_png.rf.bff6f9d9aefa6d234cdb4bf06826f44e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5_png.rf.bff6f9d9aefa6d234cdb4bf06826f44e.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5bc0425b-PXL_20220909_093124537.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5bc0425b-PXL_20220909_093124537.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5d547edf4afbf92893321504_png.rf.5fd90dfcc13f25ab2f91ffc9a77d7d52.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5d547edf4afbf92893321504_png.rf.5fd90dfcc13f25ab2f91ffc9a77d7d52.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5d547edf4afbf92893321504_png.rf.799ecffecd3ef851b211ab78fd5c3bc7.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5d547edf4afbf92893321504_png.rf.799ecffecd3ef851b211ab78fd5c3bc7.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5d547edf4afbf92893321504_png.rf.ee521614bcedcae12df2e67d717b6593.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5d547edf4afbf92893321504_png.rf.ee521614bcedcae12df2e67d717b6593.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5eae8ae5-PXL_20220819_091735657.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/5eae8ae5-PXL_20220819_091735657.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/60ae77a9-PXL_20210914_121358013.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/60ae77a9-PXL_20210914_121358013.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/60d5feb7-PXL_20211126_134007212.mp40002.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/60d5feb7-PXL_20211126_134007212.mp40002.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6_png.rf.4518fff7e1b6ebe0ebaccea30da9ab1b.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6_png.rf.4518fff7e1b6ebe0ebaccea30da9ab1b.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6_png.rf.4784444bb758bf00b53480ab45fd3a66.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6_png.rf.4784444bb758bf00b53480ab45fd3a66.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6_png.rf.ab32d844350a067873eff7f994692f95.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6_png.rf.ab32d844350a067873eff7f994692f95.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6f1d622c-PXL_20230103_073837663.mp40002.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6f1d622c-PXL_20230103_073837663.mp40002.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6fc2d171-PXL_20220909_094540929.mp40002.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/6fc2d171-PXL_20220909_094540929.mp40002.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/78ee11b0-PXL_20211126_134007212.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/78ee11b0-PXL_20211126_134007212.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/8_png.rf.290aedb51da2a2694b8e83b1ccd0b66c.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/8_png.rf.290aedb51da2a2694b8e83b1ccd0b66c.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/8_png.rf.bfb0e65828b498f968f92fbbf9ffd637.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/8_png.rf.bfb0e65828b498f968f92fbbf9ffd637.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/8_png.rf.ccba9bee58d6edf6550ab592ab3f7899.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/8_png.rf.ccba9bee58d6edf6550ab592ab3f7899.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/91d9b196-PXL_20211203_145714472.mp40002.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/91d9b196-PXL_20211203_145714472.mp40002.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/96f67375-PXL_20210914_121358013.mp40002.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/96f67375-PXL_20210914_121358013.mp40002.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9_png.rf.26009ba865a7b5200d20eaead308290e.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9_png.rf.26009ba865a7b5200d20eaead308290e.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9_png.rf.844d29e10d3d712272927b22126cb1d8.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9_png.rf.844d29e10d3d712272927b22126cb1d8.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9_png.rf.a1e37f60f4ef992707a55d152366286a.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9_png.rf.a1e37f60f4ef992707a55d152366286a.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9cb48859-PXL_20220909_094540929.mp40001.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9cb48859-PXL_20220909_094540929.mp40001.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9d986b98-PXL_20220204_160101667.mp40002.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/representative data/9d986b98-PXL_20220204_160101667.mp40002.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/saved_model/model.tflite" beforeDir="false" afterPath="$PROJECT_DIR$/models/saved_model/model.tflite" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -128,7 +169,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "master",
     "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/Users/mjohn/PycharmProjects/tflite_model_maker_v3/combined data with original data",
+    "last_opened_file_path": "C:/Users/mjohn/PycharmProjects/tflite_model_maker_v3/models/v2",
     "settings.editor.selected.configurable": "terminal"
   }
 }]]></component>
@@ -142,9 +183,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\models\v2" />
+      <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\models\v1" />
+      <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\representative data" />
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\combined data with original data" />
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3" />
-      <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\combined training data" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\old_models" />
@@ -251,7 +294,23 @@
       <option name="project" value="LOCAL" />
       <updated>1722878921047</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="made some more models">
+      <option name="closed" value="true" />
+      <created>1722896290767</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1722896290767</updated>
+    </task>
+    <task id="LOCAL-00006" summary="starting a batch-decay strategy">
+      <option name="closed" value="true" />
+      <created>1722901466200</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1722901466200</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -260,6 +319,8 @@
     <MESSAGE value="more models, more sample data" />
     <MESSAGE value="made some new classes for augmenting and combining training data." />
     <MESSAGE value="tried to implement some form of early stopping" />
-    <option name="LAST_COMMIT_MESSAGE" value="tried to implement some form of early stopping" />
+    <MESSAGE value="made some more models" />
+    <MESSAGE value="starting a batch-decay strategy" />
+    <option name="LAST_COMMIT_MESSAGE" value="starting a batch-decay strategy" />
   </component>
 </project>
