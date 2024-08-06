@@ -10,7 +10,7 @@ TRAIN_DIR = 'combined data with original data'
 #TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test')
-BATCH_SIZE = 4
+BATCH_SIZE = 64
 EPOCHS = 50
 BACKBONE = 'efficientnetv2_b1_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
@@ -63,31 +63,31 @@ if __name__ == "__main__":
     print(f"Number of validation images: {valid.size}")
     print(f"Number of test images: {test.size}")
 
-    if os.path.exists(SAVED_MODEL_PATH):
-        print("Loading existing model...")
-        loaded_model = tf.saved_model.load(SAVED_MODEL_PATH)
+    # if os.path.exists(SAVED_MODEL_PATH):
+    #     print("Loading existing model...")
+    #     loaded_model = tf.saved_model.load('models/v1/saved_model')
+    #
+    #     # Create the model spec
+    #     model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+    #         model_name='efficientdet-lite0',
+    #         uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+    #         hparams={}
+    #     )
+    #
+    #     model = object_detector.ObjectDetector(model_spec, LABEL_MAP, representative_data)
+    #     model.model = loaded_model
 
-        # Create the model spec
-        model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
-            model_name='efficientdet-lite0',
-            uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
-            hparams={'max_instances_per_image': 20, 'backbone_name': BACKBONE}
-        )
-
-        model = object_detector.ObjectDetector(model_spec, LABEL_MAP, representative_data)
-        model.model = loaded_model
-
-    else:
-        print("Creating new model...")
-        model = object_detector.create(
-            train_data=train,
-            model_spec=spec,
-            batch_size=BATCH_SIZE,
-            train_whole_model=TRAIN_WHOLE_MODEL,
-            validation_data=valid,
-            epochs=0,  # Set to 0 as we'll train manually
-            do_train=False
-        )
+    # else:
+    print("Creating new model...")
+    model = object_detector.create(
+        train_data=train,
+        model_spec=spec,
+        batch_size=BATCH_SIZE,
+        train_whole_model=TRAIN_WHOLE_MODEL,
+        validation_data=valid,
+        epochs=0,  # Set to 0 as we'll train manually
+        do_train=False
+    )
 
     # Train the model
     model = train_model(model, train, valid, EPOCHS)

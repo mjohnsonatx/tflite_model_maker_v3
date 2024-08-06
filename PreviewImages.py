@@ -1,6 +1,7 @@
 import os
-import cv2
 import xml.etree.ElementTree as ET
+import cv2
+import random
 
 def parse_xml(xml_file):
     """Parse XML file to extract bounding box coordinates."""
@@ -18,11 +19,12 @@ def parse_xml(xml_file):
     return boxes
 
 def draw_bounding_boxes(image_directory, num_images):
-    """Draw bounding boxes on images as specified by their corresponding XML files."""
+    """Draw bounding boxes on randomly selected images as specified by their corresponding XML files."""
     files = [f for f in os.listdir(image_directory) if f.endswith('.jpg')]
-    files = files[:num_images]  # Limit the number of files to process
+    random.shuffle(files)  # Shuffle the list of files to select randomly
+    selected_files = files[:num_images]  # Limit the number of files to process
 
-    for file in files:
+    for file in selected_files:
         img_path = os.path.join(image_directory, file)
         xml_path = img_path.replace('.jpg', '.xml')
 
@@ -48,6 +50,6 @@ def draw_bounding_boxes(image_directory, num_images):
         cv2.destroyAllWindows()
 
 # Example usage
-image_directory = 'augmented data with added rotation'
-num_images = 15  # Number of images to process
+image_directory = 'augmented data'
+num_images = 200  # Number of images to process
 draw_bounding_boxes(image_directory, num_images)

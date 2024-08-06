@@ -1,0 +1,27 @@
+<annotation>
+	<folder></folder>
+	<filename>70-2-_jpg.rf.5aea64703ede2b63505ea75d7e8e446c.jpg</filename>
+	<path>70-2-_jpg.rf.5aea64703ede2b63505ea75d7e8e446c.jpg</path>
+	<source>
+		<database>roboflow.com</database>
+	</source>
+	<size>
+		<width>640</width>
+		<height>640</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>barbell</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>367</xmin>
+			<xmax>640</xmax>
+			<ymin>139</ymin>
+			<ymax>589</ymax>
+		</bndbox>
+	</object>
+</annotation>

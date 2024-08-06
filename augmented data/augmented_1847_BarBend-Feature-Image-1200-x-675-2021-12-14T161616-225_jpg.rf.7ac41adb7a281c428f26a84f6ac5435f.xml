@@ -1,0 +1,40 @@
+<annotation>
+	<folder />
+	<filename>augmented_1847_BarBend-Feature-Image-1200-x-675-2021-12-14T161616-225_jpg.rf.7ac41adb7a281c428f26a84f6ac5435f.jpg</filename>
+	<path>augmented_1847_BarBend-Feature-Image-1200-x-675-2021-12-14T161616-225_jpg.rf.7ac41adb7a281c428f26a84f6ac5435f.jpg</path>
+	<source>
+		<database>roboflow.com</database>
+	</source>
+	<size>
+		<width>416</width>
+		<height>416</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>barbell</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>320</xmin>
+			<xmax>375</xmax>
+			<ymin>173</ymin>
+			<ymax>341</ymax>
+		</bndbox>
+	</object>
+	<object>
+		<name>barbell</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>75</xmin>
+			<xmax>134</xmax>
+			<ymin>184</ymin>
+			<ymax>342</ymax>
+		</bndbox>
+	</object>
+</annotation>
