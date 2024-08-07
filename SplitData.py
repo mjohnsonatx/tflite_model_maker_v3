@@ -41,10 +41,10 @@ def split_data(source_dir, train_dir, test_dir, valid_dir, train_ratio=0.7, test
 
 
 # Define directories
-source_directory = 'path_to_your_source_directory'
-train_directory = 'path_to_your_train_directory'
-test_directory = 'path_to_your_test_directory'
-valid_directory = 'path_to_your_valid_directory'
+source_directory = 'NEW DATA AND AUGMENTED DATA'
+train_directory = 'NEW DATA SPLIT/train'
+test_directory = 'NEW DATA SPLIT/test'
+valid_directory = 'NEW DATA SPLIT/valid'
 
 # Call the function
 split_data(source_directory, train_directory, test_directory, valid_directory)

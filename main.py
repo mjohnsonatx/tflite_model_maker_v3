@@ -5,12 +5,11 @@ import tflite_model_maker
 from tflite_model_maker import object_detector, model_spec
 
 EXPORT_DIR = 'models'
-DATA_DIR = 'data'
-TRAIN_DIR = 'combined data with original data'
-#TRAIN_DIR = os.path.join(DATA_DIR, 'train')
+DATA_DIR = 'NEW DATA SPLIT'
+TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test')
-BATCH_SIZE = 64
+BATCH_SIZE = 4
 EPOCHS = 50
 BACKBONE = 'efficientnetv2_b1_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
@@ -53,11 +52,11 @@ if __name__ == "__main__":
         label_map=LABEL_MAP
     )
 
-    representative_data = object_detector.DataLoader.from_pascal_voc(
-        images_dir='representative data',
-        annotations_dir='representative data',
-        label_map=LABEL_MAP
-    )
+    # representative_data = object_detector.DataLoader.from_pascal_voc(
+    #     images_dir='representative data',
+    #     annotations_dir='representative data',
+    #     label_map=LABEL_MAP
+    # )
 
     print(f"Number of training images: {train.size}")
     print(f"Number of validation images: {valid.size}")
@@ -104,16 +103,16 @@ if __name__ == "__main__":
 
     # Save the model as TensorFlow SavedModel
     # Specify the batch size for the saved model
-    pre_mode = 'infer'  # Specify the pre-processing mode
-    post_mode = 'global'  # Specify the post-processing mode, set to tflite when training the last model before conversion
-
-    print("Model saved as Tensorflow")
-    model.export(
-        SAVED_MODEL_PATH,
-        batch_size=BATCH_SIZE,
-        pre_mode=pre_mode,
-        post_mode=post_mode
-    )
+    # pre_mode = 'infer'  # Specify the pre-processing mode
+    # post_mode = 'global'  # Specify the post-processing mode, set to tflite when training the last model before conversion
+    #
+    # print("Model saved as Tensorflow")
+    # model.export(
+    #     SAVED_MODEL_PATH,
+    #     batch_size=BATCH_SIZE,
+    #     pre_mode=pre_mode,
+    #     post_mode=post_mode
+    # )
 
     print("Exporting the model...")
     model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
