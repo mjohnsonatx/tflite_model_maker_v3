@@ -141,7 +141,7 @@ def augment_and_save(source_dir, dest_dir, num_images):
 # Example usage
 if __name__ == "__main__":
     source_directory = 'NEW DATA POOL'
-    destination_directory = 'augmented data'
+    destination_directory = 'augmented data2'
     number_of_images_to_augment = 2000
 
     augment_and_save(source_directory, destination_directory, number_of_images_to_augment)

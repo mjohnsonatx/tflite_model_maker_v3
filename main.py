@@ -1,5 +1,70 @@
+# from tflite_model_maker import object_detector
+# from tflite_model_maker import model_spec
+# import os
+#
+# # Disable training on GPU.
+# # tf.config.set_visible_devices([], 'GPU')
+#
+# EXPORT_DIR = 'models'
+# DATA_DIR = 'NEW DATA SPLIT'
+# TRAIN_DIR = os.path.join(DATA_DIR, 'train')
+# VALID_DIR = os.path.join(DATA_DIR, 'valid')
+# TEST_DIR = os.path.join(DATA_DIR, 'test')
+# BATCH_SIZE = 4
+# ARCHITECTURE = 'efficientdet_lite0'
+# TRAIN_WHOLE_MODEL = True
+#
+# if __name__ == "__main__":
+#     os.makedirs(EXPORT_DIR, exist_ok=True)
+#
+#     spec = model_spec.get(ARCHITECTURE)
+#
+#     train = object_detector.DataLoader.from_pascal_voc(
+#         images_dir=TRAIN_DIR,
+#         annotations_dir=TRAIN_DIR,
+#         label_map={1: "barbell"}
+#     )
+#
+#     valid = object_detector.DataLoader.from_pascal_voc(
+#         images_dir=VALID_DIR,
+#         annotations_dir=VALID_DIR,
+#         label_map={1: "barbell"}
+#     )
+#
+#     test = object_detector.DataLoader.from_pascal_voc(
+#         images_dir=TEST_DIR,
+#         annotations_dir=TEST_DIR,
+#         label_map={1: "barbell"}
+#     )
+#
+#     model = object_detector.create(
+#         train,
+#         epochs=50,
+#         model_spec=spec,
+#         batch_size=BATCH_SIZE,
+#         train_whole_model=TRAIN_WHOLE_MODEL,
+#         validation_data=valid
+#     )
+#
+#     tflite_filename = f'{ARCHITECTURE}.tflite'
+#
+#     if TRAIN_WHOLE_MODEL:
+#         tflite_filename = f'{ARCHITECTURE}_whole.tflite'
+#
+#     print("Evaluating the original model...")
+#     print(model.evaluate(test, batch_size=BATCH_SIZE))
+#
+#     print("Exporting the model...")
+#     model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
+#
+#     print("Evaluating the exported model...")
+#     print(model.evaluate_tflite(os.path.join(EXPORT_DIR, tflite_filename), test))
+
+
 import logging
 import os
+
+import hub
 import tensorflow as tf
 import tflite_model_maker
 from tflite_model_maker import object_detector, model_spec
@@ -10,14 +75,13 @@ TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test')
 BATCH_SIZE = 4
-EPOCHS = 50
+EPOCHS = 65
 BACKBONE = 'efficientnetv2_b1_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
-SAVED_MODEL_PATH = os.path.join(EXPORT_DIR, 'saved_model')
+LABEL_MAP = {1: "barbell"}
 
-LABEL_MAP={1: "barbell"}
 
 def train_model(model, train_data, validation_data, epochs):
     model.train(
@@ -53,8 +117,8 @@ if __name__ == "__main__":
     )
 
     # representative_data = object_detector.DataLoader.from_pascal_voc(
-    #     images_dir='representative data',
-    #     annotations_dir='representative data',
+    #     images_dir='representative data2',
+    #     annotations_dir='representative data2',
     #     label_map=LABEL_MAP
     # )
 
@@ -66,21 +130,55 @@ if __name__ == "__main__":
     #     print("Loading existing model...")
     #     loaded_model = tf.saved_model.load('models/v1/saved_model')
     #
-    #     # Create the model spec
-    #     model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
-    #         model_name='efficientdet-lite0',
-    #         uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
-    #         hparams={}
-    #     )
+    # Create the model spec
+
+    # model_url = 'https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1'
+    #
+    # # Load the model (this will download it automatically if not cached)
+    # model = hub.load(model_url)
+    # print("Model downloaded and loaded successfully!")
+
+    # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+    #     model_name='efficientdet-lite0',
+    #     uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+    #     hparams={'backbone_name': BACKBONE}
+    #)
+
+    model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+        model_name='efficientdet-lite0',
+        uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+        hparams={
+            'backbone_name': BACKBONE,
+            'nms_configs': {
+                'method': 'gaussian',
+                'iou_thresh': None,
+                'score_thresh': 0.7,
+                'sigma': None,
+                'pyfunc': False,
+                'max_nms_inputs': 0,
+                'max_output_size': 100,
+            }, 'gamma': 1.15
+        }
+    )
+
     #
     #     model = object_detector.ObjectDetector(model_spec, LABEL_MAP, representative_data)
     #     model.model = loaded_model
 
     # else:
     print("Creating new model...")
+    # model = object_detector.create(
+    #     train,
+    #     epochs=50,
+    #     model_spec=spec,
+    #     batch_size=BATCH_SIZE,
+    #     train_whole_model=TRAIN_WHOLE_MODEL,
+    #     validation_data=valid
+    # )
+
     model = object_detector.create(
         train_data=train,
-        model_spec=spec,
+        model_spec=model_spec,
         batch_size=BATCH_SIZE,
         train_whole_model=TRAIN_WHOLE_MODEL,
         validation_data=valid,
@@ -91,7 +189,7 @@ if __name__ == "__main__":
     # Train the model
     model = train_model(model, train, valid, EPOCHS)
 
-    # Evaluate the model
+    #Evaluate the model
     print("Evaluating the model...")
     metrics = model.evaluate(test, batch_size=BATCH_SIZE)
     print(f"Evaluation metrics: {metrics}")
@@ -100,6 +198,9 @@ if __name__ == "__main__":
 
     if TRAIN_WHOLE_MODEL:
         tflite_filename = f'{ARCHITECTURE}_whole.tflite'
+
+    print("Exporting the model...")
+    model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
 
     # Save the model as TensorFlow SavedModel
     # Specify the batch size for the saved model
@@ -114,15 +215,12 @@ if __name__ == "__main__":
     #     post_mode=post_mode
     # )
 
-    print("Exporting the model...")
-    model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
     #
     # # Export quantized TFLite model
     # model.export(export_dir=EXPORT_DIR,
     #              tflite_filename=f'{ARCHITECTURE}_retrained_quantized.tflite',
     #              quantization_config=model.get_default_quantization_config(representative_data=test))
     # print(f"Quantized model exported as TFLite to {EXPORT_DIR}/{ARCHITECTURE}_retrained_quantized.tflite")
-
 
     # model = object_detector.create(
     #     train_data=train,
@@ -146,12 +244,8 @@ if __name__ == "__main__":
     # print("Exporting the model...")
     # model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
 
-
-
-
-
 """"
-Example for representive data
+Example for representive data2
 """
 
 # def load_and_preprocess_image(path):
@@ -169,7 +263,7 @@ Example for representive data
 #         yield [processed_image.numpy()]
 #
 # # Assuming 'representative_image_paths' is a list of file paths to your images
-# representative_dataset = tf.data.Dataset.from_tensor_slices(representative_image_paths)
+# representative_dataset = tf.data2.Dataset.from_tensor_slices(representative_image_paths)
 # representative_dataset = representative_dataset.map(load_and_preprocess_image).batch(1)
 
 """

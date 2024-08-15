@@ -50,12 +50,12 @@
 #         cv2.destroyAllWindows()
 #
 # # Example usage
-# image_directory = 'augmented data'
+# image_directory = 'augmented data2'
 # num_images = 200  # Number of images to process
 # draw_bounding_boxes(image_directory, num_images)
 
 '''''
-delete bad data, parse through certain number of files in directory
+delete bad data2, parse through certain number of files in directory
 '''
 
 # import os
@@ -120,7 +120,7 @@ delete bad data, parse through certain number of files in directory
 
 
 '''''
-delete bad data, parse through entire directory
+delete bad data2, parse through entire directory
 '''
 
 
@@ -190,7 +190,7 @@ image_directory = 'NEW DATA SPLIT/valid'
 draw_bounding_boxes(image_directory)
 
 """
-script to delete all data points with more than one bounding box
+script to delete all data2 points with more than one bounding box
 """
 # import os
 # import xml.etree.ElementTree as ET

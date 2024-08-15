@@ -17,6 +17,6 @@ def compare_directories(dir1, dir2):
 
 # Specify the paths to the directories to compare
 directory1 = 'NEW DATA POOL'
-directory2 = 'data/train'
+directory2 = 'data2/train'
 
 compare_directories(directory1, directory2)
