@@ -152,12 +152,13 @@ if __name__ == "__main__":
             'nms_configs': {
                 'method': 'gaussian',
                 'iou_thresh': None,
-                'score_thresh': 0.7,
+                'score_thresh': 0.5,
                 'sigma': None,
                 'pyfunc': False,
                 'max_nms_inputs': 0,
-                'max_output_size': 100,
-            }, 'gamma': 1.15
+                'max_output_size': 100},
+            'gamma': 1.25,
+            'label_smoothing': 0.1
         }
     )
 
