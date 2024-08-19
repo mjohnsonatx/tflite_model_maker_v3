@@ -64,8 +64,7 @@
 import logging
 import os
 
-import hub
-import tensorflow as tf
+
 import tflite_model_maker
 from tflite_model_maker import object_detector, model_spec
 
@@ -75,8 +74,8 @@ TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test')
 BATCH_SIZE = 4
-EPOCHS = 65
-BACKBONE = 'efficientnetv2_b1_imagenet'
+EPOCHS = 75
+BACKBONE = 'efficientnetv2_b2_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
@@ -158,7 +157,8 @@ if __name__ == "__main__":
                 'max_nms_inputs': 0,
                 'max_output_size': 100},
             'gamma': 1.25,
-            'label_smoothing': 0.1
+            'label_smoothing': 0.25,  # Increased for better generalization
+            'weight_decay': 5e-5  # Increased to reduce overfitting
         }
     )
 
