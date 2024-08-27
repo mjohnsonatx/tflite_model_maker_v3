@@ -186,7 +186,7 @@ def draw_bounding_boxes(image_directory):
 
 
 # Example usage
-image_directory = 'NEW DATA SPLIT/valid'
+image_directory = 'zoom out'
 draw_bounding_boxes(image_directory)
 
 """

@@ -62,6 +62,48 @@ def update_xml(xml_path, new_filename, new_boxes):
     return tree
 
 
+def random_zoom_out(image, boxes):
+    original_height, original_width = tf.shape(image)[0], tf.shape(image)[1]
+
+    # Randomly choose a zoom factor between 0.6 and 0.9 (zoom out)
+    zoom_factor = tf.random.uniform([], 0.3, 0.7)
+
+    # Calculate new dimensions
+    new_height = tf.cast(tf.cast(original_height, tf.float32) * zoom_factor, tf.int32)
+    new_width = tf.cast(tf.cast(original_width, tf.float32) * zoom_factor, tf.int32)
+
+    # Resize the image (this effectively zooms out)
+    zoomed_image = tf.image.resize(image, [new_height, new_width])
+
+    # Create a blank canvas of the original size
+    canvas = tf.zeros([original_height, original_width, 3], dtype=tf.float32)
+
+    # Calculate offsets to center the zoomed image
+    offset_height = (original_height - new_height) // 2
+    offset_width = (original_width - new_width) // 2
+
+    # Place the zoomed image onto the canvas
+    canvas = tf.image.pad_to_bounding_box(zoomed_image, offset_height, offset_width, original_height, original_width)
+
+    # Adjust bounding boxes
+    scale_y = tf.cast(new_height, tf.float32) / tf.cast(original_height, tf.float32)
+    scale_x = tf.cast(new_width, tf.float32) / tf.cast(original_width, tf.float32)
+    offset_y = tf.cast(offset_height, tf.float32) / tf.cast(original_height, tf.float32)
+    offset_x = tf.cast(offset_width, tf.float32) / tf.cast(original_width, tf.float32)
+
+    boxes = tf.stack([
+        boxes[:, 0] * scale_y + offset_y,
+        boxes[:, 1] * scale_x + offset_x,
+        boxes[:, 2] * scale_y + offset_y,
+        boxes[:, 3] * scale_x + offset_x
+    ], axis=-1)
+
+    # Clip the boxes to ensure they're within [0, 1]
+    boxes = tf.clip_by_value(boxes, 0.0, 1.0)
+
+    return canvas, boxes
+
+
 
 def random_flip_horizontal(image, boxes):
     try:
@@ -88,16 +130,22 @@ def random_flip_horizontal(image, boxes):
 def augment_image(image, boxes):
 
     # Random brightness
-    image = tf.image.random_brightness(image, max_delta=0.5)
-
-    # Random saturation
-    image = tf.image.random_saturation(image, lower=0.2, upper=1.1)
-
-    # Random hue
-    image = tf.image.random_hue(image, max_delta=0.2)
+    # image = tf.image.random_brightness(image, max_delta=0.5)
+    #
+    # # Random saturation
+    # image = tf.image.random_saturation(image, lower=0.2, upper=1.1)
+    #
+    # # Random hue
+    # image = tf.image.random_hue(image, max_delta=0.2)
 
     # Random flip left-right
     # image, boxes = random_flip_horizontal(image, boxes)
+
+    # Apply random zoom out with 50% probability
+    # if tf.random.uniform([]) > 0.5:
+    image, boxes = random_zoom_out(image, boxes)
+
+
 
     # Ensure the pixel values are still in [0, 1] range
     image = tf.clip_by_value(image, 0.0, 1.0)
@@ -140,8 +188,8 @@ def augment_and_save(source_dir, dest_dir, num_images):
 
 # Example usage
 if __name__ == "__main__":
-    source_directory = 'NEW DATA POOL'
-    destination_directory = 'augmented data2'
-    number_of_images_to_augment = 2000
+    source_directory = 'NEW DATA SPLIT/train'
+    destination_directory = 'zoom out'
+    number_of_images_to_augment = 1000
 
     augment_and_save(source_directory, destination_directory, number_of_images_to_augment)

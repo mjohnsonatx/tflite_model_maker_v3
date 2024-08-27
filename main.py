@@ -70,14 +70,21 @@ from tflite_model_maker import object_detector, model_spec
 
 EXPORT_DIR = 'models'
 DATA_DIR = 'NEW DATA SPLIT'
-TRAIN_DIR = os.path.join(DATA_DIR, 'train')
-VALID_DIR = os.path.join(DATA_DIR, 'valid')
-TEST_DIR = os.path.join(DATA_DIR, 'test')
+TRAIN_DIR = os.path.join(DATA_DIR, 'train with zoom out')
+VALID_DIR = os.path.join(DATA_DIR, 'valid with zoom out')
+TEST_DIR = os.path.join(DATA_DIR, 'test with zoom out')
+# BATCH_SIZE = 32
+# EPOCHS = 100
+# BACKBONE = 'efficientnetv2_b2_imagenet'
+# ARCHITECTURE = 'efficientdet_lite0'
+# TRAIN_WHOLE_MODEL = True
+
 BATCH_SIZE = 4
-EPOCHS = 75
-BACKBONE = 'efficientnetv2_b2_imagenet'
+EPOCHS = 100
+BACKBONE = 'efficientnetv2_b3_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
+
 
 LABEL_MAP = {1: "barbell"}
 
@@ -143,6 +150,30 @@ if __name__ == "__main__":
     #     hparams={'backbone_name': BACKBONE}
     #)
 
+    # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+    #     model_name='efficientdet-lite0',
+    #     uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+    #     hparams={
+    #         'backbone_name': BACKBONE,
+    #         'nms_configs': {
+    #             'method': 'gaussian',
+    #             'iou_thresh': None,
+    #             'score_thresh': 0.5,
+    #             'sigma': None,
+    #             'pyfunc': False,
+    #             'max_nms_inputs': 0,
+    #             'max_output_size': 100},
+    #         'gamma': 1.25,
+    #         'label_smoothing': 0.25,  # Increased for better generalization
+    #         'weight_decay': 5e-5,  # Increased to reduce overfitting
+    #         'learning_rate': 0.16,  # Increased learning rate for faster convergence
+    #         'lr_warmup_init': 0.016,  # Adjusted warmup initial learning rate
+    #         'first_lr_drop_epoch': 50.0,  # Reduced epochs for first learning rate drop
+    #         'second_lr_drop_epoch': 75.0,  # Reduced epochs for second learning rate drop
+    #         'num_epochs': 100  # Increased total epochs for fine-tuning
+    #     }
+    # )
+
     model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
         model_name='efficientdet-lite0',
         uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
@@ -151,14 +182,29 @@ if __name__ == "__main__":
             'nms_configs': {
                 'method': 'gaussian',
                 'iou_thresh': None,
-                'score_thresh': 0.5,
+                'score_thresh': 0.6,
                 'sigma': None,
                 'pyfunc': False,
-                'max_nms_inputs': 0,
-                'max_output_size': 100},
+                'max_nms_inputs': 5000,
+                'max_output_size': 100
+            },
             'gamma': 1.25,
-            'label_smoothing': 0.25,  # Increased for better generalization
-            'weight_decay': 5e-5  # Increased to reduce overfitting
+            'label_smoothing': 0.1,
+            'weight_decay': 5e-5,
+            'learning_rate': 0.012,
+            'lr_warmup_init': 0.008,
+            'first_lr_drop_epoch': 70.0,
+            'second_lr_drop_epoch': 90.0,
+            'num_epochs': 100,
+            'momentum': 0.9,
+            'optimizer': 'sgd',
+            'input_rand_hflip': True,
+            'jitter_min': 0.6,
+            'jitter_max': 1.4,
+            'autoaugment_policy': 'v2',
+            'clip_gradients_norm': 10.0,  # Here's the gradient clipping addition
+            'anchor_scale': 4.0,
+            'aspect_ratios': [1.0, 2.0, 0.5, 3.0, 1 / 3]  # Expanded to detect more varied aspect ratios
         }
     )
 
