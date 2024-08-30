@@ -1,7 +1,10 @@
 import logging
 import os
 
+import numpy as np
+import tensorflow as tf
 import tflite_model_maker
+from PIL.Image import Image
 from tflite_model_maker import object_detector, model_spec
 import tensorflow_model_optimization as tfmot
 
@@ -17,13 +20,22 @@ TEST_DIR = os.path.join(DATA_DIR, 'test with zoom out')
 # TRAIN_WHOLE_MODEL = True
 
 BATCH_SIZE = 4
-EPOCHS = 75
-BACKBONE = 'efficientnetv2_b0_imagenet'
+EPOCHS = 100
+#BACKBONE = 'efficientnetv2_b0_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
-
 LABEL_MAP = {1: "barbell"}
+
+
+def create_qat_model(model):
+    # Apply quantization to the model
+    quantize_model = tfmot.quantization.keras.quantize_model
+
+    # Use `quantize_model` to actually make the model quantization aware
+    qat_model = quantize_model(model)
+
+    return qat_model
 
 
 def train_model(model, train_data, validation_data, epochs):
@@ -59,12 +71,6 @@ if __name__ == "__main__":
         label_map=LABEL_MAP
     )
 
-    # representative_data = object_detector.DataLoader.from_pascal_voc(
-    #     images_dir='representative data2',
-    #     annotations_dir='representative data2',
-    #     label_map=LABEL_MAP
-    # )
-
     print(f"Number of training images: {train.size}")
     print(f"Number of validation images: {valid.size}")
     print(f"Number of test images: {test.size}")
@@ -87,74 +93,11 @@ if __name__ == "__main__":
     #     hparams={'backbone_name': BACKBONE}
     #)
 
-    # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
-    #     model_name='efficientdet-lite0',
-    #     uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
-    #     hparams={
-    #         'backbone_name': BACKBONE,
-    #         'nms_configs': {
-    #             'method': 'gaussian',
-    #             'iou_thresh': None,
-    #             'score_thresh': 0.5,
-    #             'sigma': None,
-    #             'pyfunc': False,
-    #             'max_nms_inputs': 0,
-    #             'max_output_size': 100},
-    #         'gamma': 1.25,
-    #         'label_smoothing': 0.25,  # Increased for better generalization
-    #         'weight_decay': 5e-5,  # Increased to reduce overfitting
-    #         'learning_rate': 0.16,  # Increased learning rate for faster convergence
-    #         'lr_warmup_init': 0.016,  # Adjusted warmup initial learning rate
-    #         'first_lr_drop_epoch': 50.0,  # Reduced epochs for first learning rate drop
-    #         'second_lr_drop_epoch': 75.0,  # Reduced epochs for second learning rate drop
-    #         'num_epochs': 100  # Increased total epochs for fine-tuning
-    #     }
-    # )
-
-    # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
-    #     model_name='efficientdet-lite0',
-    #     uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
-    #     hparams={
-    #         'backbone_name': BACKBONE,
-    #         'nms_configs': {
-    #             'method': 'gaussian',
-    #             'iou_thresh': None,
-    #             'score_thresh': 0.6,
-    #             'sigma': None,
-    #             'pyfunc': False,
-    #             'max_nms_inputs': 5000,
-    #             'max_output_size': 100
-    #         },
-    #         'gamma': 1.25,
-    #         'label_smoothing': 0.1,
-    #         'weight_decay': 5e-5,
-    #         'learning_rate': 0.012,
-    #         'lr_warmup_init': 0.008,
-    #         'first_lr_drop_epoch': 70.0,
-    #         'second_lr_drop_epoch': 90.0,
-    #         'num_epochs': 100,
-    #         'momentum': 0.9,
-    #         'optimizer': 'sgd',
-    #         'input_rand_hflip': True,
-    #         'jitter_min': 0.6,
-    #         'jitter_max': 1.4,
-    #         'autoaugment_policy': 'v2',
-    #         'clip_gradients_norm': 10.0,  # Here's the gradient clipping addition
-    #         'anchor_scale': 4.0,
-    #         'aspect_ratios': [1.0, 2.0, 0.5, 3.0, 1 / 3]  # Expanded to detect more varied aspect ratios
-    #     }
-    # )
-
-
-
-    # Set anchor scales to[0.5, 1.0, 2.0].
-    # Set aspect ratios to[1.0].
-
     model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
         model_name='efficientdet-lite0',
         uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
         hparams={
-            'backbone_name': BACKBONE,
+            #'backbone_name': BACKBONE,
             'nms_configs': {
                 'method': 'gaussian',
                 'iou_thresh': None,
@@ -167,10 +110,10 @@ if __name__ == "__main__":
             'gamma': 1.25,
             'label_smoothing': 0.1,
             'weight_decay': 5e-5,
-            'learning_rate': 0.012,
+            'learning_rate': 0.01,
             'lr_warmup_init': 0.008,
-            'first_lr_drop_epoch': 50.0,  # Adjusted to an earlier epoch
-            'second_lr_drop_epoch': 70.0,  # Adjusted to follow the first drop sooner
+            'first_lr_drop_epoch': 60.0,  # Adjusted to an earlier epoch
+            'second_lr_drop_epoch': 80.0,  # Adjusted to follow the first drop sooner
             'num_epochs': 100,
             'momentum': 0.9,
             'optimizer': 'sgd',
@@ -180,7 +123,8 @@ if __name__ == "__main__":
             'autoaugment_policy': 'v2',
             'clip_gradients_norm': 10.0,  # Here's the gradient clipping addition
             'anchor_scale': 4.0,
-            'aspect_ratios': [1.0, 2.0, 0.5]
+            'aspect_ratios': [1.0, 2.0, 0.5],
+            'lr_decay_method': 'cosine'
         }
     )
 
@@ -190,14 +134,6 @@ if __name__ == "__main__":
 
     # else:
     print("Creating new model...")
-    # model = object_detector.create(
-    #     train,
-    #     epochs=50,
-    #     model_spec=spec,
-    #     batch_size=BATCH_SIZE,
-    #     train_whole_model=TRAIN_WHOLE_MODEL,
-    #     validation_data=valid
-    # )
 
     model = object_detector.create(
         train_data=train,
@@ -225,6 +161,8 @@ if __name__ == "__main__":
     print("Exporting the model...")
     model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
 
+
+
     # Save the model as TensorFlow SavedModel
     # Specify the batch size for the saved model
     # pre_mode = 'infer'  # Specify the pre-processing mode
@@ -239,33 +177,6 @@ if __name__ == "__main__":
     # )
 
     #
-    # # Export quantized TFLite model
-    # model.export(export_dir=EXPORT_DIR,
-    #              tflite_filename=f'{ARCHITECTURE}_retrained_quantized.tflite',
-    #              quantization_config=model.get_default_quantization_config(representative_data=test))
-    # print(f"Quantized model exported as TFLite to {EXPORT_DIR}/{ARCHITECTURE}_retrained_quantized.tflite")
-
-    # model = object_detector.create(
-    #     train_data=train,
-    #     epochs = 30,
-    #     model_spec=spec,
-    #     validation_data=valid,
-    #     batch_size=BATCH_SIZE,
-    #     train_whole_model=TRAIN_WHOLE_MODEL,
-    #     do_train=True
-    # )
-    #
-    # tflite_filename = f'{ARCHITECTURE}.tflite'
-    #
-    # if TRAIN_WHOLE_MODEL:
-    #     tflite_filename = f'{ARCHITECTURE}_whole.tflite'
-    #
-    #
-    # print("Evaluating the original model...")
-    # print(model.evaluate(test, batch_size=BATCH_SIZE))
-    #
-    # print("Exporting the model...")
-    # model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
 
 """"
 Example for representive data2
