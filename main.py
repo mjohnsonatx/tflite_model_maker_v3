@@ -4,7 +4,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import tflite_model_maker
-from PIL.Image import Image
+from PIL import Image
 from tflite_model_maker import object_detector, model_spec
 import tensorflow_model_optimization as tfmot
 
@@ -13,29 +13,14 @@ DATA_DIR = 'NEW DATA SPLIT'
 TRAIN_DIR = os.path.join(DATA_DIR, 'train with zoom out')
 VALID_DIR = os.path.join(DATA_DIR, 'valid with zoom out')
 TEST_DIR = os.path.join(DATA_DIR, 'test with zoom out')
-# BATCH_SIZE = 32
-# EPOCHS = 100
-# BACKBONE = 'efficientnetv2_b2_imagenet'
-# ARCHITECTURE = 'efficientdet_lite0'
-# TRAIN_WHOLE_MODEL = True
 
 BATCH_SIZE = 4
-EPOCHS = 100
-#BACKBONE = 'efficientnetv2_b0_imagenet'
+EPOCHS = 75
+BACKBONE = 'efficientnetv2_b3_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
 LABEL_MAP = {1: "barbell"}
-
-
-def create_qat_model(model):
-    # Apply quantization to the model
-    quantize_model = tfmot.quantization.keras.quantize_model
-
-    # Use `quantize_model` to actually make the model quantization aware
-    qat_model = quantize_model(model)
-
-    return qat_model
 
 
 def train_model(model, train_data, validation_data, epochs):
@@ -49,31 +34,6 @@ def train_model(model, train_data, validation_data, epochs):
 
 
 if __name__ == "__main__":
-    os.makedirs(EXPORT_DIR, exist_ok=True)
-
-    spec = model_spec.get(ARCHITECTURE)
-
-    train = object_detector.DataLoader.from_pascal_voc(
-        images_dir=TRAIN_DIR,
-        annotations_dir=TRAIN_DIR,
-        label_map=LABEL_MAP
-    )
-
-    valid = object_detector.DataLoader.from_pascal_voc(
-        images_dir=VALID_DIR,
-        annotations_dir=VALID_DIR,
-        label_map=LABEL_MAP
-    )
-
-    test = object_detector.DataLoader.from_pascal_voc(
-        images_dir=TEST_DIR,
-        annotations_dir=TEST_DIR,
-        label_map=LABEL_MAP
-    )
-
-    print(f"Number of training images: {train.size}")
-    print(f"Number of validation images: {valid.size}")
-    print(f"Number of test images: {test.size}")
 
     # if os.path.exists(SAVED_MODEL_PATH):
     #     print("Loading existing model...")
@@ -97,42 +57,136 @@ if __name__ == "__main__":
         model_name='efficientdet-lite0',
         uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
         hparams={
-            #'backbone_name': BACKBONE,
+            'backbone_name': BACKBONE,
             'nms_configs': {
                 'method': 'gaussian',
-                'iou_thresh': None,
-                'score_thresh': 0.5,
-                'sigma': None,
+                'iou_thresh': 0.4,
+                'score_thresh': 0.7,
+                'sigma': 0.8,
                 'pyfunc': False,
                 'max_nms_inputs': 5000,
                 'max_output_size': 100
             },
             'gamma': 1.25,
-            'label_smoothing': 0.1,
+            'label_smoothing': 0.2,
             'weight_decay': 5e-5,
-            'learning_rate': 0.01,
-            'lr_warmup_init': 0.008,
-            'first_lr_drop_epoch': 60.0,  # Adjusted to an earlier epoch
-            'second_lr_drop_epoch': 80.0,  # Adjusted to follow the first drop sooner
+            'learning_rate': 0.008,
+            'lr_warmup_init': 0.0008,
+            'first_lr_drop_epoch': 40.0,  # Adjusted to an earlier epoch
+            'second_lr_drop_epoch': 60.0,  # Adjusted to follow the first drop sooner
             'num_epochs': 100,
             'momentum': 0.9,
-            'optimizer': 'sgd',
+            'optimizer': 'adam',
             'input_rand_hflip': True,
             'jitter_min': 0.6,
             'jitter_max': 1.4,
             'autoaugment_policy': 'v2',
             'clip_gradients_norm': 10.0,  # Here's the gradient clipping addition
-            'anchor_scale': 4.0,
-            'aspect_ratios': [1.0, 2.0, 0.5],
-            'lr_decay_method': 'cosine'
+            'anchor_scale': 3.0,
+            'aspect_ratios': [1.0, 2.0, 0.5]
         }
     )
+
+    # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+    #     model_name='efficientdet-lite0',
+    #     uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+    #     hparams={
+    #         'backbone_name': 'efficientnetv2_b3_imagenet',
+    #         'nms_configs': {
+    #             'method': 'gaussian',
+    #             'iou_thresh': None,
+    #             'score_thresh': 0.6,
+    #             'sigma': None,
+    #             'pyfunc': False,
+    #             'max_nms_inputs': 5000,
+    #             'max_output_size': 100
+    #         },
+    #         'gamma': 1.25,
+    #         'label_smoothing': 0.1,
+    #         'weight_decay': 4e-5,
+    #         'learning_rate': 0.012,  # Initial learning rate adjusted
+    #         'lr_warmup_init': 0.008,
+    #         'first_lr_drop_epoch': 60,  # Adjusted for longer training
+    #         'second_lr_drop_epoch': 80,  # Adjusted for longer training
+    #         'num_epochs': 100,
+    #         'momentum': 0.9,
+    #         'optimizer': 'sgd',
+    #         'input_rand_hflip': True,
+    #         'jitter_min': 0.6,
+    #         'jitter_max': 1.4,
+    #         'autoaugment_policy': 'v2',
+    #         'clip_gradients_norm': 10.0,
+    #         'anchor_scale': 3.0,
+    #         'aspect_ratios': [1.0, 2.0, 0.5],
+    #         'lr_decay_method': 'cosine'
+    #     }
+    # )
+
+    # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+    #     model_name='efficientdet-lite0',
+    #     uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+    #     hparams={
+    #         'backbone_name': 'efficientnetv2_b3_imagenet',
+    #         'nms_configs': {
+    #             'method': 'gaussian',
+    #             'score_thresh': 0.5,
+    #             'max_nms_inputs': 5000,
+    #             'max_output_size': 100
+    #         },
+    #         'gamma': 1.25,
+    #         'label_smoothing': 0.1,
+    #         'weight_decay': 8e-5,
+    #         'learning_rate': 0.02,
+    #         'lr_warmup_init': 0.015,
+    #         'first_lr_drop_epoch': 50,
+    #         'second_lr_drop_epoch': 70,
+    #         'momentum': 0.9,
+    #         'optimizer': 'sgd',
+    #         'input_rand_hflip': True,
+    #         'jitter_min': 0.6,
+    #         'jitter_max': 1.4,
+    #         'autoaugment_policy': 'v2',
+    #         'clip_gradients_norm': 10.0,
+    #         'anchor_scale': 3.0,
+    #         'aspect_ratios': [1.0, 2.0, 0.5],
+    #         'lr_decay_method': 'cosine'
+    #     }
+    # )
 
     #
     #     model = object_detector.ObjectDetector(model_spec, LABEL_MAP, representative_data)
     #     model.model = loaded_model
 
     # else:
+
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+
+    # spec = model_spec.get(ARCHITECTURE)
+
+    train = object_detector.DataLoader.from_pascal_voc(
+        images_dir=TRAIN_DIR,
+        annotations_dir=TRAIN_DIR,
+        label_map=LABEL_MAP,
+    )
+
+    valid = object_detector.DataLoader.from_pascal_voc(
+        images_dir=VALID_DIR,
+        annotations_dir=VALID_DIR,
+        label_map=LABEL_MAP,
+
+    )
+
+    test = object_detector.DataLoader.from_pascal_voc(
+        images_dir=TEST_DIR,
+        annotations_dir=TEST_DIR,
+        label_map=LABEL_MAP,
+
+    )
+
+    print(f"Number of training images: {train.size}")
+    print(f"Number of validation images: {valid.size}")
+    print(f"Number of test images: {test.size}")
+
     print("Creating new model...")
 
     model = object_detector.create(
@@ -160,8 +214,6 @@ if __name__ == "__main__":
 
     print("Exporting the model...")
     model.export(export_dir=EXPORT_DIR, tflite_filename=tflite_filename)
-
-
 
     # Save the model as TensorFlow SavedModel
     # Specify the batch size for the saved model
