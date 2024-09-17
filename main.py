@@ -15,8 +15,9 @@ VALID_DIR = os.path.join(DATA_DIR, 'valid with zoom out')
 TEST_DIR = os.path.join(DATA_DIR, 'test with zoom out')
 
 BATCH_SIZE = 4
-EPOCHS = 75
+EPOCHS = 125
 BACKBONE = 'efficientnetv2_b3_imagenet'
+#BACKBONE = 'efficientnet-b3'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
@@ -60,29 +61,29 @@ if __name__ == "__main__":
             'backbone_name': BACKBONE,
             'nms_configs': {
                 'method': 'gaussian',
-                'iou_thresh': 0.4,
+                'iou_thresh': 0.5,
                 'score_thresh': 0.7,
-                'sigma': 0.8,
+                'sigma': 0.3,
                 'pyfunc': False,
                 'max_nms_inputs': 5000,
                 'max_output_size': 100
             },
             'gamma': 1.25,
             'label_smoothing': 0.2,
-            'weight_decay': 5e-5,
-            'learning_rate': 0.008,
-            'lr_warmup_init': 0.0008,
-            'first_lr_drop_epoch': 40.0,  # Adjusted to an earlier epoch
-            'second_lr_drop_epoch': 60.0,  # Adjusted to follow the first drop sooner
+            'weight_decay': 4e-5,
+            'learning_rate': 0.012,
+            'lr_warmup_init': 0.008,
+            'first_lr_drop_epoch': 70.0,  # Adjusted to an earlier epoch
+            'second_lr_drop_epoch': 90.0,  # Adjusted to follow the first drop sooner
             'num_epochs': 100,
             'momentum': 0.9,
-            'optimizer': 'adam',
+            'optimizer': 'sgd',
             'input_rand_hflip': True,
             'jitter_min': 0.6,
             'jitter_max': 1.4,
             'autoaugment_policy': 'v2',
             'clip_gradients_norm': 10.0,  # Here's the gradient clipping addition
-            'anchor_scale': 3.0,
+            'anchor_scale': 4.0,
             'aspect_ratios': [1.0, 2.0, 0.5]
         }
     )
