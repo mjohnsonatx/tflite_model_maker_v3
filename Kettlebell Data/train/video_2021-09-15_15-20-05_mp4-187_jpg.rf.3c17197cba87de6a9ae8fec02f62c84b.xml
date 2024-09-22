@@ -1,0 +1,27 @@
+<annotation>
+	<folder></folder>
+	<filename>video_2021-09-15_15-20-05_mp4-187_jpg.rf.3c17197cba87de6a9ae8fec02f62c84b.jpg</filename>
+	<path>video_2021-09-15_15-20-05_mp4-187_jpg.rf.3c17197cba87de6a9ae8fec02f62c84b.jpg</path>
+	<source>
+		<database>roboflow.com</database>
+	</source>
+	<size>
+		<width>320</width>
+		<height>320</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>girya</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>154</xmin>
+			<xmax>220</xmax>
+			<ymin>67</ymin>
+			<ymax>99</ymax>
+		</bndbox>
+	</object>
+</annotation>

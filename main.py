@@ -15,7 +15,7 @@ VALID_DIR = os.path.join(DATA_DIR, 'valid with zoom out')
 TEST_DIR = os.path.join(DATA_DIR, 'test with zoom out')
 
 BATCH_SIZE = 4
-EPOCHS = 125
+EPOCHS = 150
 BACKBONE = 'efficientnetv2_b3_imagenet'
 #BACKBONE = 'efficientnet-b3'
 ARCHITECTURE = 'efficientdet_lite0'
@@ -69,7 +69,7 @@ if __name__ == "__main__":
                 'max_output_size': 100
             },
             'gamma': 1.25,
-            'label_smoothing': 0.2,
+            'label_smoothing': 0.1,
             'weight_decay': 4e-5,
             'learning_rate': 0.012,
             'lr_warmup_init': 0.008,

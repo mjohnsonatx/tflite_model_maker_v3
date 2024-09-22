@@ -1,0 +1,27 @@
+<annotation>
+	<folder></folder>
+	<filename>gto3_mp4-13_jpg.rf.6fd9e5ab4de5c0f79e8102f14d638be1.jpg</filename>
+	<path>gto3_mp4-13_jpg.rf.6fd9e5ab4de5c0f79e8102f14d638be1.jpg</path>
+	<source>
+		<database>roboflow.com</database>
+	</source>
+	<size>
+		<width>320</width>
+		<height>320</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>girya</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>132</xmin>
+			<xmax>145</xmax>
+			<ymin>59</ymin>
+			<ymax>88</ymax>
+		</bndbox>
+	</object>
+</annotation>

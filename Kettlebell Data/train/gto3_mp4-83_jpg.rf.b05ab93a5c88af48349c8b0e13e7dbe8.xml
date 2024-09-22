@@ -1,0 +1,27 @@
+<annotation>
+	<folder></folder>
+	<filename>gto3_mp4-83_jpg.rf.b05ab93a5c88af48349c8b0e13e7dbe8.jpg</filename>
+	<path>gto3_mp4-83_jpg.rf.b05ab93a5c88af48349c8b0e13e7dbe8.jpg</path>
+	<source>
+		<database>roboflow.com</database>
+	</source>
+	<size>
+		<width>320</width>
+		<height>320</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>kettlebell</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>157</xmin>
+			<xmax>169</xmax>
+			<ymin>149</ymin>
+			<ymax>173</ymax>
+		</bndbox>
+	</object>
+</annotation>

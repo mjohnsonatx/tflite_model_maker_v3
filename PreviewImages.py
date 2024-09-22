@@ -186,7 +186,7 @@ def draw_bounding_boxes(image_directory):
 
 
 # Example usage
-image_directory = 'zoom out'
+image_directory = 'Kettlebell Data/valid'
 draw_bounding_boxes(image_directory)
 
 """
@@ -226,6 +226,6 @@ script to delete all data2 points with more than one bounding box
 #
 #
 # # Directory to process
-# image_directory = 'NEW DATA SPLIT/valid'
+# image_directory = 'Kettlebell Data/valid'
 # deleted_count = process_directory(image_directory)
 # print(f"Total files deleted: {deleted_count}")
