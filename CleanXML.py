@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import os
 
 def update_xml_files_in_place(root_dir):
-    subdirectories = ['train', 'test', 'valid']
+    subdirectories = ['train with augment', 'test with augment', 'valid']
 
     for sub in subdirectories:
         input_dir = os.path.join(root_dir, sub)
@@ -21,8 +21,8 @@ def update_xml_files_in_place(root_dir):
                 for obj in root.findall('object'):
                     name = obj.find('name')
                     # Update object name if necessary
-                    if name.text != 'barbell':
-                        name.text = 'barbell'
+                    if name.text != 'kettlebell':
+                        name.text = 'kettlebell'
                         modified = True
 
                     # Remove any polygon tags found
@@ -40,6 +40,6 @@ def update_xml_files_in_place(root_dir):
 
 
 # Specify the root directory where 'train', 'test', 'valid' subdirectories are located
-root_dir = 'data to be modified/barbell detection v4'
+root_dir = 'Kettlebell Data'
 
 update_xml_files_in_place(root_dir)

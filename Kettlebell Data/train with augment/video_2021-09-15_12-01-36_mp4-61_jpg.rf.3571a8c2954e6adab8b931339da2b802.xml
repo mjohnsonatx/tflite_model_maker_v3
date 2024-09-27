@@ -1,0 +1,27 @@
+<annotation>
+	<folder />
+	<filename>video_2021-09-15_12-01-36_mp4-61_jpg.rf.3571a8c2954e6adab8b931339da2b802.jpg</filename>
+	<path>video_2021-09-15_12-01-36_mp4-61_jpg.rf.3571a8c2954e6adab8b931339da2b802.jpg</path>
+	<source>
+		<database>roboflow.com</database>
+	</source>
+	<size>
+		<width>320</width>
+		<height>320</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>kettlebell</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>1</xmin>
+			<xmax>269</xmax>
+			<ymin>108</ymin>
+			<ymax>271</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,5 +1,5 @@
 <annotation>
-	<folder></folder>
+	<folder />
 	<filename>video_2021-09-15_12-01-36_mp4-23_jpg.rf.81b8d7891dde71be8d936e8294ee00eb.jpg</filename>
 	<path>video_2021-09-15_12-01-36_mp4-23_jpg.rf.81b8d7891dde71be8d936e8294ee00eb.jpg</path>
 	<source>
@@ -12,7 +12,7 @@
 	</size>
 	<segmented>0</segmented>
 	<object>
-		<name>girya</name>
+		<name>kettlebell</name>
 		<pose>Unspecified</pose>
 		<truncated>0</truncated>
 		<difficult>0</difficult>

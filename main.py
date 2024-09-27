@@ -8,20 +8,21 @@ from PIL import Image
 from tflite_model_maker import object_detector, model_spec
 import tensorflow_model_optimization as tfmot
 
-EXPORT_DIR = 'models'
-DATA_DIR = 'NEW DATA SPLIT'
-TRAIN_DIR = os.path.join(DATA_DIR, 'train with zoom out')
-VALID_DIR = os.path.join(DATA_DIR, 'valid with zoom out')
-TEST_DIR = os.path.join(DATA_DIR, 'test with zoom out')
+EXPORT_DIR = 'kettlebell models'
+DATA_DIR = 'Kettlebell Data'
+TRAIN_DIR = os.path.join(DATA_DIR, 'train with augment')
+VALID_DIR = os.path.join(DATA_DIR, 'valid')
+TEST_DIR = os.path.join(DATA_DIR, 'test with augment')
 
-BATCH_SIZE = 4
-EPOCHS = 150
+BATCH_SIZE = 32
+EPOCHS = 250
 BACKBONE = 'efficientnetv2_b3_imagenet'
 #BACKBONE = 'efficientnet-b3'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
 LABEL_MAP = {1: "barbell"}
+KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
 
 
 def train_model(model, train_data, validation_data, epochs):
@@ -167,20 +168,20 @@ if __name__ == "__main__":
     train = object_detector.DataLoader.from_pascal_voc(
         images_dir=TRAIN_DIR,
         annotations_dir=TRAIN_DIR,
-        label_map=LABEL_MAP,
+        label_map=KETTLEBELL_LABEL_MAP,
     )
 
     valid = object_detector.DataLoader.from_pascal_voc(
         images_dir=VALID_DIR,
         annotations_dir=VALID_DIR,
-        label_map=LABEL_MAP,
+        label_map=KETTLEBELL_LABEL_MAP,
 
     )
 
     test = object_detector.DataLoader.from_pascal_voc(
         images_dir=TEST_DIR,
         annotations_dir=TEST_DIR,
-        label_map=LABEL_MAP,
+        label_map=KETTLEBELL_LABEL_MAP,
 
     )
 

@@ -66,7 +66,7 @@ def random_zoom_out(image, boxes):
     original_height, original_width = tf.shape(image)[0], tf.shape(image)[1]
 
     # Randomly choose a zoom factor between 0.6 and 0.9 (zoom out)
-    zoom_factor = tf.random.uniform([], 0.3, 0.7)
+    zoom_factor = tf.random.uniform([], 0.1, 0.7)
 
     # Calculate new dimensions
     new_height = tf.cast(tf.cast(original_height, tf.float32) * zoom_factor, tf.int32)
@@ -129,21 +129,21 @@ def random_flip_horizontal(image, boxes):
 
 def augment_image(image, boxes):
 
-    # Random brightness
-    # image = tf.image.random_brightness(image, max_delta=0.5)
-    #
-    # # Random saturation
-    # image = tf.image.random_saturation(image, lower=0.2, upper=1.1)
-    #
-    # # Random hue
-    # image = tf.image.random_hue(image, max_delta=0.2)
+    #Random brightness
+    image = tf.image.random_brightness(image, max_delta=0.4)
 
-    # Random flip left-right
-    # image, boxes = random_flip_horizontal(image, boxes)
+    # Random saturation
+    image = tf.image.random_saturation(image, lower=0.2, upper=1.1)
 
-    # Apply random zoom out with 50% probability
-    # if tf.random.uniform([]) > 0.5:
-    image, boxes = random_zoom_out(image, boxes)
+    # Random hue
+    image = tf.image.random_hue(image, max_delta=0.2)
+
+    #Random flip left-right
+    image, boxes = random_flip_horizontal(image, boxes)
+
+    #Apply random zoom out with 50% probability
+    if tf.random.uniform([]) > 0.5:
+        image, boxes = random_zoom_out(image, boxes)
 
 
 
@@ -188,8 +188,8 @@ def augment_and_save(source_dir, dest_dir, num_images):
 
 # Example usage
 if __name__ == "__main__":
-    source_directory = 'NEW DATA SPLIT/train'
-    destination_directory = 'zoom out'
+    source_directory = 'Kettlebell Data/test'
+    destination_directory = 'KB AUGMENT'
     number_of_images_to_augment = 1000
 
     augment_and_save(source_directory, destination_directory, number_of_images_to_augment)
