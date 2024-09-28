@@ -15,7 +15,7 @@ VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test with augment')
 
 BATCH_SIZE = 32
-EPOCHS = 250
+EPOCHS = 400
 BACKBONE = 'efficientnetv2_b3_imagenet'
 #BACKBONE = 'efficientnet-b3'
 ARCHITECTURE = 'efficientdet_lite0'
