@@ -2,7 +2,7 @@ import os
 from PIL import Image
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
-import shutil  # Import shutil for file copying
+import shutil
 
 
 def process_image(file_info):

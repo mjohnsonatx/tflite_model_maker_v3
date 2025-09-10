@@ -1,23 +1,17 @@
-import logging
 import os
 
-import numpy as np
-import tensorflow as tf
 import tflite_model_maker
-from PIL import Image
-from tflite_model_maker import object_detector, model_spec
-import tensorflow_model_optimization as tfmot
+from tflite_model_maker import object_detector
 
 EXPORT_DIR = 'kettlebell models'
-DATA_DIR = 'Kettlebell Data'
-TRAIN_DIR = os.path.join(DATA_DIR, 'train with augment')
+DATA_DIR = 'FINAL_KB_DATA'
+TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
-TEST_DIR = os.path.join(DATA_DIR, 'test with augment')
+TEST_DIR = os.path.join(DATA_DIR, 'test')
 
 BATCH_SIZE = 32
-EPOCHS = 400
+EPOCHS = 120
 BACKBONE = 'efficientnetv2_b3_imagenet'
-#BACKBONE = 'efficientnet-b3'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
@@ -55,39 +49,40 @@ if __name__ == "__main__":
     #     hparams={'backbone_name': BACKBONE}
     #)
 
-    model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
-        model_name='efficientdet-lite0',
-        uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
-        hparams={
-            'backbone_name': BACKBONE,
-            'nms_configs': {
-                'method': 'gaussian',
-                'iou_thresh': 0.5,
-                'score_thresh': 0.7,
-                'sigma': 0.3,
-                'pyfunc': False,
-                'max_nms_inputs': 5000,
-                'max_output_size': 100
-            },
-            'gamma': 1.25,
-            'label_smoothing': 0.1,
-            'weight_decay': 4e-5,
-            'learning_rate': 0.012,
-            'lr_warmup_init': 0.008,
-            'first_lr_drop_epoch': 70.0,  # Adjusted to an earlier epoch
-            'second_lr_drop_epoch': 90.0,  # Adjusted to follow the first drop sooner
-            'num_epochs': 100,
-            'momentum': 0.9,
-            'optimizer': 'sgd',
-            'input_rand_hflip': True,
-            'jitter_min': 0.6,
-            'jitter_max': 1.4,
-            'autoaugment_policy': 'v2',
-            'clip_gradients_norm': 10.0,  # Here's the gradient clipping addition
-            'anchor_scale': 4.0,
-            'aspect_ratios': [1.0, 2.0, 0.5]
-        }
-    )
+    """Used for kettle bell did not work well. The model kb_e75_b14.tflite is its baby """
+    # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+    #     model_name='efficientdet-lite0',
+    #     uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+    #     hparams={
+    #         'backbone_name': BACKBONE,
+    #         'nms_configs': {
+    #             'method': 'gaussian',
+    #             'iou_thresh': 0.5,
+    #             'score_thresh': 0.7,
+    #             'sigma': 0.3,
+    #             'pyfunc': False,
+    #             'max_nms_inputs': 5000,
+    #             'max_output_size': 100
+    #         },
+    #         'gamma': 1.25,
+    #         'label_smoothing': 0.1,
+    #         'weight_decay': 4e-5,
+    #         'learning_rate': 0.012,
+    #         'lr_warmup_init': 0.008,
+    #         'first_lr_drop_epoch': 70.0,
+    #         'second_lr_drop_epoch': 90.0,
+    #         'num_epochs': 100,
+    #         'momentum': 0.9,
+    #         'optimizer': 'sgd',
+    #         'input_rand_hflip': True,
+    #         'jitter_min': 0.6,
+    #         'jitter_max': 1.4,
+    #         'autoaugment_policy': 'v2',
+    #         'clip_gradients_norm': 10.0,  # Here's the gradient clipping addition
+    #         'anchor_scale': 4.0,
+    #         'aspect_ratios': [1.0, 2.0, 0.5]
+    #     }
+    # )
 
     # model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
     #     model_name='efficientdet-lite0',
@@ -155,11 +150,72 @@ if __name__ == "__main__":
     #     }
     # )
 
-    #
-    #     model = object_detector.ObjectDetector(model_spec, LABEL_MAP, representative_data)
-    #     model.model = loaded_model
+    model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
+        model_name='efficientdet-lite0',
+        uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+        hparams={
+            # Model architecture
+            'backbone_name': BACKBONE,
+            'num_classes': 1,
+            'image_size': 320,
 
-    # else:
+            # NMS configurations
+            'nms_configs': {
+                'method': 'gaussian',
+                'iou_thresh': 0.5,
+                'score_thresh': 0.3,
+                'sigma': 0.5,
+                'pyfunc': False,
+                'max_nms_inputs': 5000,
+                'max_output_size': 100,
+            },
+
+            'alpha': 0.25,
+            'gamma': 1.5,
+            'delta': 0.1,
+            'box_loss_weight': 75.0,
+            'label_smoothing': 0.0,
+
+            # Learning rate - OPTIMIZED SCHEDULE
+            'learning_rate': 0.01,
+            'lr_warmup_init': 0.001,
+            'lr_warmup_epoch': 5.0,
+            'lr_decay_method': 'cosine',
+            'first_lr_drop_epoch': 80.0,
+            'second_lr_drop_epoch': 120.0,
+            'poly_lr_power': 0.9,
+
+            # Optimization
+            'momentum': 0.9,
+            'optimizer': 'sgd',
+            'weight_decay': 4e-5,
+            'clip_gradients_norm': 10.0,
+            'moving_average_decay': 0.9998,
+
+            # Data augmentation - MILD AUGMENTATION
+            'input_rand_hflip': True,
+            'jitter_min': 0.85,
+            'jitter_max': 1.15,
+            'autoaugment_policy': None,
+            'grid_mask': False,
+
+            # Architecture
+            'anchor_scale': 3.0,
+            'aspect_ratios': [0.5, 1.0, 2.0],
+            'num_scales': 3,
+
+            # Training settings
+            'skip_crowd_during_training': True,
+            'max_instances_per_image': 100,
+            'mixed_precision': False,
+            'drop_remainder': True,
+            'map_freq': 5,
+
+            # Number of epochs
+            'num_epochs': 150,  # Extended training
+        }
+    )
+
 
     os.makedirs(EXPORT_DIR, exist_ok=True)
 
@@ -169,20 +225,24 @@ if __name__ == "__main__":
         images_dir=TRAIN_DIR,
         annotations_dir=TRAIN_DIR,
         label_map=KETTLEBELL_LABEL_MAP,
+        cache_dir="D:/tflite_cache",
+        num_shards=1,
     )
 
     valid = object_detector.DataLoader.from_pascal_voc(
         images_dir=VALID_DIR,
         annotations_dir=VALID_DIR,
         label_map=KETTLEBELL_LABEL_MAP,
-
+        cache_dir="D:/tflite_cache",
+        num_shards=1,
     )
 
     test = object_detector.DataLoader.from_pascal_voc(
         images_dir=TEST_DIR,
         annotations_dir=TEST_DIR,
         label_map=KETTLEBELL_LABEL_MAP,
-
+        cache_dir="D:/tflite_cache",
+        num_shards=1,
     )
 
     print(f"Number of training images: {train.size}")

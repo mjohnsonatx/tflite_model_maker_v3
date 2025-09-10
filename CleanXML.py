@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 import os
-
+# TODO need to build filter the filter out the kb data that does not have xmls
 def update_xml_files_in_place(root_dir):
     subdirectories = ['train with augment', 'test with augment', 'valid']
 

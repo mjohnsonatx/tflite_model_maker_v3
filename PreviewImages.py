@@ -186,7 +186,7 @@ def draw_bounding_boxes(image_directory):
 
 
 # Example usage
-image_directory = 'Kettlebell Data/valid'
+image_directory = 'sliced_kb_videos_into_frames/completed_annotations'
 draw_bounding_boxes(image_directory)
 
 """
