@@ -3,6 +3,10 @@ import shutil
 import sys
 import datetime
 import os
+import os
+import sys
+from pathlib import Path
+
 from tensorflow.keras import mixed_precision
 
 mixed_precision.set_global_policy('mixed_float16')  # TF 2.8 OK
@@ -10,9 +14,8 @@ mixed_precision.set_global_policy('mixed_float16')  # TF 2.8 OK
 import tensorflow as tf
 import tflite_model_maker
 from tflite_model_maker import object_detector
-
 from DualLogger import DualLogger, save_specifications
-from PlotTrainingMetrics import visualize_training
+from training_visualizer.core.visualizer import visualize_training
 
 # -----------------------------
 # Redirect temp files to D:
@@ -72,7 +75,7 @@ HPARAMS = {
     'poly_lr_power': 0.9,
     'momentum': 0.9,
     'optimizer': 'sgd',
-    'weight_decay': 7e-5,
+    'weight_decay': 1e-4,
     'clip_gradients_norm': 10.0,
     'moving_average_decay': 0.9998,
     'input_rand_hflip': True,
@@ -165,6 +168,34 @@ def check_gpu_status():
 
     print("=" * 80)
     print()
+
+
+def visualize_training_results(log_filepath, spec_filepath=None):
+    """Launch the training visualizer for the completed training."""
+    import subprocess
+    import sys
+
+    # Find the run_visualizer.py script
+    # Adjust this path based on where run_visualizer.py is relative to your training script
+    visualizer_path = Path(__file__).parent / "run_visualizer.py"
+
+    if not visualizer_path.exists():
+        # Try parent directory
+        visualizer_path = Path(__file__).parent.parent / "run_visualizer.py"
+
+    if visualizer_path.exists():
+        # Run the visualizer as a subprocess
+        cmd = [sys.executable, str(visualizer_path), log_filepath]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            return True
+        else:
+            print(f"Visualizer error: {result.stderr}")
+            return False
+    else:
+        print(f"Could not find run_visualizer.py")
+        return False
 
 
 # -----------------------------
@@ -336,7 +367,8 @@ if __name__ == "__main__":
         print("STARTING AUTOMATIC VISUALIZATION...")
         print("=" * 80)
 
-        if visualize_training(log_filepath):
+        if visualize_training_results(log_filepath, specs_filepath):
             print("\n" + "=" * 80)
             print("✅ Visualization complete!")
             print("=" * 80)
+

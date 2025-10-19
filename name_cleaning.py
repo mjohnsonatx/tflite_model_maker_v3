@@ -3,6 +3,9 @@ import glob
 import logging
 from xml.etree import ElementTree as ET
 
+#TODO add this feature/function to the DataCleaningTab or FileOperationsTab in the GUIModelMaker
+
+
 # --- CONFIGURE THESE ---
 DATA_DIR = r'FINAL_KB_DATA'
 FOLDERS = ['train', 'valid', 'test']  # subfolders to process
