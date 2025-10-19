@@ -1,16 +1,13 @@
 import tempfile
-import os
-
-# Redirect temp files to D:
-tempfile.tempdir = r"D:\tflite_cache_temp"
-os.environ["TMPDIR"] = tempfile.tempdir
-os.environ["TEMP"] = tempfile.tempdir
-os.environ["TMP"] = tempfile.tempdir
-
-os.makedirs(tempfile.tempdir, exist_ok=True)
-
+import shutil
 import sys
 import datetime
+import os
+from tensorflow.keras import mixed_precision
+
+mixed_precision.set_global_policy('mixed_float16')  # TF 2.8 OK
+
+import tensorflow as tf
 import tflite_model_maker
 from tflite_model_maker import object_detector
 
@@ -18,84 +15,80 @@ from DualLogger import DualLogger, save_specifications
 from PlotTrainingMetrics import visualize_training
 
 # -----------------------------
+# Redirect temp files to D:
+# -----------------------------
+tempfile.tempdir = r"D:\tflite_cache_temp"
+os.environ["TMPDIR"] = tempfile.tempdir
+os.environ["TEMP"] = tempfile.tempdir
+os.environ["TMP"] = tempfile.tempdir
+os.makedirs(tempfile.tempdir, exist_ok=True)
+
+# -----------------------------
 # Configuration
 # -----------------------------
-EXPORT_BASE_DIR = 'kettlebell models'
-DATA_DIR = 'FINAL_KB_DATA'
+EXPORT_BASE_DIR = 'barbell_models'
+DATA_DIR = 'FINAL_BARBELL_DATA'
 
 TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
 TEST_DIR = os.path.join(DATA_DIR, 'test')
 
-BATCH_SIZE = 32
-EPOCHS = 150
+CACHE_DIR = r"D:\tflite_cache"
+
+BATCH_SIZE = 16
+EPOCHS = 200
 
 BACKBONE = 'efficientnetv2_b3_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
 KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
+BARBELL_LABEL_MAP = {1: "barbell"}
 
-# All hyperparameters - easier to reference
 HPARAMS = {
-    # Model architecture
     'backbone_name': BACKBONE,
     'num_classes': 1,
     'image_size': 320,
-
-    # NMS configurations
     'nms_configs': {
         'method': 'gaussian',
-        'iou_thresh': 0.5,
-        'score_thresh': 0.3,
+        'iou_thresh': 0.4,
+        'score_thresh': 0.7,
         'sigma': 0.5,
         'pyfunc': False,
         'max_nms_inputs': 5000,
         'max_output_size': 100,
     },
-
-    # Loss and optimization parameters
     'alpha': 0.25,
     'gamma': 1.5,
-    'delta': 0.1,
+    'delta': 0.05,
     'box_loss_weight': 60.0,
-    'label_smoothing': 0.1,
-
-    # Learning rate schedule
-    'learning_rate': 0.01,
-    'lr_warmup_init': 0.001,
-    'lr_warmup_epoch': 5.0,
+    'label_smoothing': 0.10,
+    'learning_rate': 0.0045,
+    'lr_warmup_init': 0.0003,
+    'lr_warmup_epoch': 8.0,
     'lr_decay_method': 'cosine',
-    'first_lr_drop_epoch': 20.0,
-    'second_lr_drop_epoch': 40.0,
+    'first_lr_drop_epoch': 70.0,
+    'second_lr_drop_epoch': 90.0,
     'poly_lr_power': 0.9,
-
-    # Optimization
     'momentum': 0.9,
     'optimizer': 'sgd',
-    'weight_decay': 4e-5,
+    'weight_decay': 7e-5,
     'clip_gradients_norm': 10.0,
     'moving_average_decay': 0.9998,
-
-    # Augmentation
     'input_rand_hflip': True,
-    'jitter_min': 0.85,
-    'jitter_max': 1.15,
-    'autoaugment_policy': None,
+    'jitter_min': 0.6,
+    'jitter_max': 1.4,
+    'autoaugment_policy': 'v2',
     'grid_mask': False,
-
-    # Anchors / detection architecture
-    'anchor_scale': 3.0,
-    'aspect_ratios': [0.5, 1.0, 2.0],
+    'anchor_scale': 4.0,
+    'aspect_ratios': [1.0, 2.0, 0.5],
     'num_scales': 3,
-
-    # Training settings
     'skip_crowd_during_training': True,
     'max_instances_per_image': 100,
     'mixed_precision': False,
     'drop_remainder': True,
     'map_freq': 5,
-    'num_epochs': 150,
+    'num_epochs': 125,
 }
 
 
@@ -112,27 +105,89 @@ def train_model(model, train_data, validation_data, epochs):
     return model
 
 
+def clean_cache_dir(path):
+    """Remove and recreate a directory safely."""
+    if os.path.exists(path):
+        print(f"🧹 Clearing old cache: {path}")
+        try:
+            shutil.rmtree(path)
+        except Exception as e:
+            print(f"⚠️  Could not fully remove cache ({e}), continuing...")
+    os.makedirs(path, exist_ok=True)
+    print(f"✅ Cache directory ready: {path}")
+
+
+def check_gpu_status():
+    import os, tensorflow as tf
+    print("=" * 80)
+    print("🔍 GPU VERIFICATION")
+    print("=" * 80)
+    print(f"TensorFlow version: {tf.__version__}")
+    print(f"Built with CUDA: {tf.test.is_built_with_cuda()}")
+    print(f"TF_GPU_ALLOCATOR: {os.environ.get('TF_GPU_ALLOCATOR', 'default')}\n")
+
+    gpus = tf.config.list_physical_devices('GPU')
+    if not gpus:
+        print("❌ No GPU detected. Training will run on CPU.")
+    else:
+        print(f"✅ Detected {len(gpus)} GPU(s):")
+        for i, gpu in enumerate(gpus):
+            print(f"  GPU {i}: {gpu.name}")
+            try:
+                tf.config.experimental.set_memory_growth(gpu, True)
+                print(f"  ↳ memory_growth: enabled")
+            except Exception as e:
+                print(f"  ↳ memory_growth: failed ({e})")
+
+        try:
+            from tensorflow.python.client import device_lib
+            for d in device_lib.list_local_devices():
+                if d.device_type == 'GPU':
+                    print(f"  ↳ {d.physical_device_desc}")
+        except Exception:
+            pass
+
+    try:
+        print("\nVerifying cuDNN runtime version...")
+        from tensorflow.python.platform import build_info
+        print("  CUDA:", build_info.build_info.get('cuda_version', 'Unknown'))
+        print("  cuDNN:", build_info.build_info.get('cudnn_version', 'Unknown'))
+    except Exception:
+        print("⚠️  Could not query build info (TensorFlow internal).")
+
+    # 🧩 Mixed Precision Status
+    try:
+        from tensorflow.keras import mixed_precision
+        policy = mixed_precision.global_policy()
+        print(f"\nMixed Precision Policy: {policy.name}")
+    except Exception as e:
+        print(f"\nMixed Precision Policy: unavailable ({e})")
+
+    print("=" * 80)
+    print()
+
+
 # -----------------------------
 # Main
 # -----------------------------
 if __name__ == "__main__":
-    # Create a dated export directory for this run
 
-    CACHE_DIR = r"D:\tflite_cache"
-    # Ensure the directory exists
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    # Clean temp and cache dirs
+    clean_cache_dir(tempfile.tempdir)
+    clean_cache_dir(CACHE_DIR)
 
+    # Check GPU setup before any heavy work
+    check_gpu_status()
+
+    # Create dated export directory
     date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     EXPORT_DIR = os.path.join(EXPORT_BASE_DIR, f"{ARCHITECTURE}_{date_str}")
     os.makedirs(EXPORT_DIR, exist_ok=True)
 
-    # Set up logging to file
+    # Set up logging
     log_filepath = os.path.join(EXPORT_DIR, "training_log.txt")
-
-    # Redirect both stdout and stderr to capture all output
     stdout_logger = DualLogger(log_filepath, 'w')
     stderr_logger = DualLogger(log_filepath, 'a')
-
     sys.stdout = stdout_logger
     sys.stderr = stderr_logger
 
@@ -145,21 +200,20 @@ if __name__ == "__main__":
         print("=" * 80)
         print()
 
-        # Save specifications
         specs_filepath = save_specifications(
-            EXPORT_DIR,
-            BATCH_SIZE,
-            EPOCHS,
-            HPARAMS,
-            TRAIN_WHOLE_MODEL,
-            BACKBONE,
-            ARCHITECTURE
+            export_dir=EXPORT_DIR,
+            batch_size=BATCH_SIZE,
+            epochs=EPOCHS,
+            hparams=HPARAMS,
+            train_whole_model=TRAIN_WHOLE_MODEL,
+            backbone=BACKBONE,
+            architecture=ARCHITECTURE,
+            mixed_precision_policy=mixed_precision.global_policy().name
         )
-        print(f"Specifications saved to: {specs_filepath}")
-        print()
+        print(f"Specifications saved to: {specs_filepath}\n")
 
         # -----------------------------
-        # Model specification
+        # Model spec
         # -----------------------------
         model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
             model_name='efficientdet-lite0',
@@ -173,31 +227,28 @@ if __name__ == "__main__":
         train = object_detector.DataLoader.from_pascal_voc(
             images_dir=TRAIN_DIR,
             annotations_dir=TRAIN_DIR,
-            label_map=KETTLEBELL_LABEL_MAP,
+            label_map=BARBELL_LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=4
         )
-
         valid = object_detector.DataLoader.from_pascal_voc(
             images_dir=VALID_DIR,
             annotations_dir=VALID_DIR,
-            label_map=KETTLEBELL_LABEL_MAP,
+            label_map=BARBELL_LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=2
         )
-
         test = object_detector.DataLoader.from_pascal_voc(
             images_dir=TEST_DIR,
             annotations_dir=TEST_DIR,
-            label_map=KETTLEBELL_LABEL_MAP,
+            label_map=BARBELL_LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=1
         )
 
         print(f"Training: {train.size} images")
         print(f"Validation: {valid.size} images")
-        print(f"Test: {test.size} images")
-        print()
+        print(f"Test: {test.size} images\n")
 
         # -----------------------------
         # Create / train model
@@ -220,22 +271,19 @@ if __name__ == "__main__":
         # Evaluate model
         # -----------------------------
         print("\nEvaluating model...")
-
-        # Evaluate on validation set
         print("\nValidation Set Evaluation:")
         val_metrics = model.evaluate(valid, batch_size=BATCH_SIZE)
         print(f"Validation metrics: {val_metrics}")
 
-        # Evaluate on test set
         print("\nTest Set Evaluation:")
         test_metrics = model.evaluate(test, batch_size=BATCH_SIZE)
         print(f"Test metrics: {test_metrics}")
 
         # -----------------------------
-        # Export model (TFLite + SavedModel + label map)
+        # Export model
         # -----------------------------
         tflite_filename = (
-            f"{ARCHITECTURE}_whole.tflite"
+            f"__BARBELL_{ARCHITECTURE}_whole.tflite"
             if TRAIN_WHOLE_MODEL
             else f"{ARCHITECTURE}.tflite"
         )
@@ -277,7 +325,6 @@ if __name__ == "__main__":
         raise
 
     finally:
-        # Restore original stdout/stderr and close log files
         sys.stdout = stdout_logger.terminal
         sys.stderr = stderr_logger.terminal
         stdout_logger.close()
@@ -289,7 +336,6 @@ if __name__ == "__main__":
         print("STARTING AUTOMATIC VISUALIZATION...")
         print("=" * 80)
 
-        # Auto-plot the training results
         if visualize_training(log_filepath):
             print("\n" + "=" * 80)
             print("✅ Visualization complete!")

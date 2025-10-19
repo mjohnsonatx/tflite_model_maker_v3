@@ -1,0 +1,79 @@
+================================================================================
+TRAINING SPECIFICATIONS
+================================================================================
+
+TRAINING CONFIGURATION
+--------------------------------------------------------------------------------
+Batch Size:               16
+Epochs:                  150
+Train Whole Model:       True
+Architecture:            efficientdet_lite0
+Backbone:                efficientnetv2_b3_imagenet
+Mixed Precision Policy:  mixed_float16
+
+MODEL SPECIFICATION
+--------------------------------------------------------------------------------
+Model Name:              efficientdet-lite0
+URI:                     https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1
+
+HYPERPARAMETERS
+--------------------------------------------------------------------------------
+
+MODEL ARCHITECTURE:
+  backbone_name:         efficientnetv2_b3_imagenet
+  num_classes:           1
+  image_size:            320
+
+NMS CONFIGURATIONS:
+  method:                   gaussian
+  iou_thresh:               0.5
+  score_thresh:             0.3
+  sigma:                    0.5
+  pyfunc:                   False
+  max_nms_inputs:           5000
+  max_output_size:          100
+
+LOSS AND OPTIMIZATION PARAMETERS:
+  alpha:                 0.25
+  gamma:                 1.25
+  delta:                 0.1
+  box_loss_weight:       50.0
+  label_smoothing:       0.1
+
+LEARNING RATE SCHEDULE:
+  learning_rate:         0.0045
+  lr_warmup_init:        0.0003
+  lr_warmup_epoch:       8.0
+  lr_decay_method:       cosine
+  first_lr_drop_epoch:   20.0
+  second_lr_drop_epoch:  40.0
+  poly_lr_power:         0.9
+
+OPTIMIZATION:
+  momentum:              0.9
+  optimizer:             sgd
+  weight_decay:          4e-05
+  clip_gradients_norm:   10.0
+  moving_average_decay:  0.9998
+
+AUGMENTATION:
+  input_rand_hflip:      True
+  jitter_min:            0.85
+  jitter_max:            1.15
+  autoaugment_policy:    None
+  grid_mask:             False
+
+ANCHORS / DETECTION ARCHITECTURE:
+  anchor_scale:          3.0
+  aspect_ratios:         [0.5, 1.0, 2.0]
+  num_scales:            3
+
+TRAINING SETTINGS:
+  skip_crowd_during_training: True
+  max_instances_per_image:    100
+  mixed_precision:            False
+  drop_remainder:             True
+  map_freq:                   5
+  num_epochs:                 150
+
+================================================================================

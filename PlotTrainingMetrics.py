@@ -1,13 +1,14 @@
+import re
 import ast
 import os
-import re
 import tempfile
 import webbrowser
-from pathlib import Path
-
 import numpy as np
+from pathlib import Path
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import tkinter as tk
+from tkinter import filedialog, messagebox, simpledialog
 
 
 def parse_training_log(log_file):
@@ -443,6 +444,7 @@ def create_model_specs_card(specs):
     """
 
     return html
+
 
 def create_interactive_plot(metrics, full_size=False):
     """Create highly detailed interactive plot with Plotly - with better grouping."""
@@ -1532,94 +1534,1633 @@ def create_statistics_table(stats):
     return html
 
 
-def visualize_training(log_filepath, spec_filepath=None):
-    """Main function to visualize training results with simultaneous windows."""
-    try:
-        metrics, eval_metrics = parse_training_log(log_filepath)
+def create_comparison_evaluation_plot(datasets, full_size=False):
+    """Create side-by-side evaluation metrics plots for multiple datasets."""
 
-        # Try to find spec file if not provided
-        if spec_filepath is None:
-            log_dir = Path(log_filepath).parent
+    num_datasets = len(datasets)
+    if num_datasets == 1:
+        # Single dataset - use original layout
+        return create_evaluation_metrics_plot(datasets[0]['eval_metrics'], full_size)
+
+    # Multiple datasets - create side-by-side with larger size
+    fig = make_subplots(
+        rows=1, cols=num_datasets,
+        subplot_titles=[f"<b>{d['name']}</b>" for d in datasets],
+        horizontal_spacing=0.12
+    )
+
+    categories = ['AP', 'AP50', 'AP75', 'APs', 'APm', 'APl',
+                  'ARmax1', 'ARmax10', 'ARmax100', 'ARs', 'ARm', 'ARl']
+
+    colors_val = ['rgb(31, 119, 180)', 'rgb(44, 160, 44)', 'rgb(148, 103, 189)']
+    colors_test = ['rgb(255, 127, 14)', 'rgb(214, 39, 40)', 'rgb(227, 119, 194)']
+
+    for idx, dataset in enumerate(datasets, 1):
+        eval_metrics = dataset['eval_metrics']
+
+        val_values = []
+        test_values = []
+
+        for cat in categories:
+            val_values.append(eval_metrics['validation'].get(cat, 0))
+            test_values.append(eval_metrics['test'].get(cat, 0))
+
+        # Validation line with thicker lines
+        fig.add_trace(
+            go.Scatter(
+                name=f'Validation',
+                x=categories,
+                y=val_values,
+                mode='lines+markers',
+                line=dict(color=colors_val[idx - 1], width=4 if full_size else 3),
+                marker=dict(size=12 if full_size else 10, symbol='circle'),
+                text=[f'Val: {v:.3f}' for v in val_values],
+                textposition='top center',
+                textfont=dict(size=12 if full_size else 11),
+                legendgroup=f'dataset{idx}',
+                showlegend=(idx == 1)
+            ),
+            row=1, col=idx
+        )
+
+        # Test line with thicker lines
+        fig.add_trace(
+            go.Scatter(
+                name=f'Test',
+                x=categories,
+                y=test_values,
+                mode='lines+markers',
+                line=dict(color=colors_test[idx - 1], width=4 if full_size else 3, dash='dash'),
+                marker=dict(size=12 if full_size else 10, symbol='diamond'),
+                text=[f'Test: {v:.3f}' for v in test_values],
+                textposition='bottom center',
+                textfont=dict(size=12 if full_size else 11),
+                legendgroup=f'dataset{idx}',
+                showlegend=(idx == 1)
+            ),
+            row=1, col=idx
+        )
+
+        # Add highlighted background for key metrics
+        key_metrics_idx = [categories.index(m) for m in ['AP', 'AP50', 'AP75'] if m in categories]
+        if key_metrics_idx:
+            fig.add_vrect(
+                x0=-0.5, x1=max(key_metrics_idx) + 0.5,
+                fillcolor="rgba(102, 126, 234, 0.05)",
+                layer="below",
+                line_width=0,
+                row=1, col=idx
+            )
+
+    # Update layout with larger size
+    fig.update_layout(
+        title={
+            'text': 'Model Evaluation Metrics Comparison',
+            'font': {'size': 28 if full_size else 24},
+            'x': 0.5,
+            'xanchor': 'center'
+        },
+        height=800 if full_size else 700,
+        hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=14)
+        ),
+        plot_bgcolor='rgba(240, 240, 240, 0.3)',
+        paper_bgcolor='white',
+        font=dict(size=13)
+    )
+
+    # Update all axes with better formatting
+    for i in range(1, num_datasets + 1):
+        fig.update_xaxes(
+            tickangle=-45,
+            row=1, col=i,
+            tickfont=dict(size=12),
+            title_font=dict(size=14)
+        )
+        fig.update_yaxes(
+            range=[0, 1.1],
+            row=1, col=i,
+            tickfont=dict(size=12),
+            title_font=dict(size=14),
+            gridcolor='rgba(128, 128, 128, 0.2)'
+        )
+        if i == 1:
+            fig.update_yaxes(title_text='Score', row=1, col=i)
+
+    return fig
+
+
+def create_comparison_interactive_plot(datasets, full_size=False):
+    """Create side-by-side interactive training metrics plots."""
+
+    num_datasets = len(datasets)
+
+    # Create subplots with secondary y-axis
+    fig = make_subplots(
+        rows=1, cols=num_datasets,
+        subplot_titles=[f"<b>{d['name']}</b>" for d in datasets],
+        horizontal_spacing=0.12,
+        specs=[[{"secondary_y": True} for _ in range(num_datasets)]]
+    )
+
+    # Color schemes for different datasets
+    colors = {
+        'loss': ['rgb(31, 119, 180)', 'rgb(44, 160, 44)', 'rgb(214, 39, 40)'],
+        'val_loss': ['rgb(255, 127, 14)', 'rgb(152, 223, 138)', 'rgb(255, 152, 150)'],
+        'det_loss': ['rgba(44, 160, 44, 0.7)', 'rgba(76, 190, 76, 0.7)', 'rgba(100, 220, 100, 0.7)'],
+        'cls_loss': ['rgba(214, 39, 40, 0.7)', 'rgba(244, 69, 70, 0.7)', 'rgba(255, 99, 100, 0.7)'],
+        'lr': ['rgb(23, 190, 207)', 'rgb(53, 220, 237)', 'rgb(83, 250, 255)'],
+        'grad': ['rgb(127, 127, 127)', 'rgb(157, 157, 157)', 'rgb(187, 187, 187)']
+    }
+
+    for idx, dataset in enumerate(datasets, 1):
+        metrics = dataset['metrics']
+        epochs = metrics['epoch']
+
+        # Main losses (always visible)
+        if len(metrics['loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['loss'],
+                    name='Training Loss',
+                    line=dict(color=colors['loss'][idx - 1], width=3),
+                    mode='lines+markers',
+                    marker=dict(size=5),
+                    legendgroup=f'dataset{idx}',
+                    showlegend=(idx == 1)
+                ),
+                row=1, col=idx, secondary_y=False
+            )
+
+        if len(metrics['val_loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['val_loss'],
+                    name='Validation Loss',
+                    line=dict(color=colors['val_loss'][idx - 1], width=3),
+                    mode='lines+markers',
+                    marker=dict(size=5),
+                    legendgroup=f'dataset{idx}',
+                    showlegend=(idx == 1)
+                ),
+                row=1, col=idx, secondary_y=False
+            )
+
+            # Mark best validation loss
+            best_idx = metrics['val_loss'].index(min(metrics['val_loss']))
+            best_epoch = metrics['epoch'][best_idx]
+            best_val_loss = min(metrics['val_loss'])
+
+            fig.add_annotation(
+                x=best_epoch,
+                y=best_val_loss,
+                text=f"Best: {best_val_loss:.4f}",
+                showarrow=True,
+                arrowhead=2,
+                arrowcolor=colors['val_loss'][idx - 1],
+                font=dict(size=11),
+                bgcolor="rgba(255, 255, 255, 0.9)",
+                bordercolor=colors['val_loss'][idx - 1],
+                borderwidth=2,
+                row=1, col=idx
+            )
+
+        # Component losses (legend only)
+        if len(metrics['det_loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['det_loss'],
+                    name='Detection Loss',
+                    line=dict(color=colors['det_loss'][idx - 1], width=2, dash='dash'),
+                    mode='lines',
+                    visible='legendonly',
+                    legendgroup=f'dataset{idx}',
+                    showlegend=(idx == 1)
+                ),
+                row=1, col=idx, secondary_y=False
+            )
+
+        if len(metrics['cls_loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['cls_loss'],
+                    name='Classification Loss',
+                    line=dict(color=colors['cls_loss'][idx - 1], width=2, dash='dot'),
+                    mode='lines',
+                    visible='legendonly',
+                    legendgroup=f'dataset{idx}',
+                    showlegend=(idx == 1)
+                ),
+                row=1, col=idx, secondary_y=False
+            )
+
+        # Learning rate on secondary axis
+        if len(metrics['learning_rate']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['learning_rate'],
+                    name='Learning Rate',
+                    line=dict(color=colors['lr'][idx - 1], width=2),
+                    mode='lines',
+                    visible='legendonly',
+                    legendgroup=f'dataset{idx}',
+                    showlegend=(idx == 1)
+                ),
+                row=1, col=idx, secondary_y=True
+            )
+
+    # Update layout
+    fig.update_layout(
+        title={
+            'text': 'Interactive Training Metrics Comparison',
+            'font': {'size': 26},
+            'x': 0.5,
+            'xanchor': 'center'
+        },
+        height=700,
+        hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.12,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=13)
+        ),
+        plot_bgcolor='rgba(240, 240, 240, 0.5)',
+        paper_bgcolor='white',
+        font=dict(size=12)
+    )
+
+    # Update axes
+    for i in range(1, num_datasets + 1):
+        fig.update_xaxes(
+            title_text="Epoch",
+            row=1, col=i,
+            tickfont=dict(size=12),
+            title_font=dict(size=14),
+            gridcolor='rgba(128, 128, 128, 0.2)'
+        )
+        fig.update_yaxes(
+            title_text="Loss" if i == 1 else "",
+            row=1, col=i,
+            secondary_y=False,
+            tickfont=dict(size=12),
+            title_font=dict(size=14),
+            gridcolor='rgba(128, 128, 128, 0.2)'
+        )
+        fig.update_yaxes(
+            title_text="Learning Rate" if i == num_datasets else "",
+            row=1, col=i,
+            secondary_y=True,
+            tickfont=dict(size=12),
+            title_font=dict(size=14),
+            gridcolor='rgba(128, 128, 128, 0.1)'
+        )
+
+    # Update subplot titles
+    for annotation in fig['layout']['annotations']:
+        if 'text' in annotation and any(d['name'] in annotation['text'] for d in datasets):
+            annotation['font'] = dict(size=16)
+
+    return fig
+
+
+def create_comparison_training_plot(datasets, plot_type='loss', full_size=False):
+    """Create side-by-side training plots for multiple datasets."""
+
+    num_datasets = len(datasets)
+
+    # Create subplots
+    fig = make_subplots(
+        rows=1, cols=num_datasets,
+        subplot_titles=[d['name'] for d in datasets],
+        horizontal_spacing=0.1,
+        specs=[[{"secondary_y": True} for _ in range(num_datasets)]]
+    )
+
+    colors = {
+        'train': ['rgb(31, 119, 180)', 'rgb(44, 160, 44)', 'rgb(214, 39, 40)'],
+        'val': ['rgb(255, 127, 14)', 'rgb(152, 223, 138)', 'rgb(255, 152, 150)']
+    }
+
+    for idx, dataset in enumerate(datasets, 1):
+        metrics = dataset['metrics']
+        epochs = metrics['epoch']
+
+        if plot_type == 'loss':
+            # Training and validation loss
+            if len(metrics['loss']) > 0:
+                fig.add_trace(
+                    go.Scatter(
+                        x=epochs, y=metrics['loss'],
+                        name=f'Train ({dataset["name"]})',
+                        line=dict(color=colors['train'][idx - 1], width=3 if full_size else 2),
+                        mode='lines+markers',
+                        marker=dict(size=4),
+                        legendgroup=f'dataset{idx}'
+                    ),
+                    row=1, col=idx, secondary_y=False
+                )
+
+            if len(metrics['val_loss']) > 0:
+                fig.add_trace(
+                    go.Scatter(
+                        x=epochs, y=metrics['val_loss'],
+                        name=f'Val ({dataset["name"]})',
+                        line=dict(color=colors['val'][idx - 1], width=3 if full_size else 2),
+                        mode='lines+markers',
+                        marker=dict(size=4),
+                        legendgroup=f'dataset{idx}'
+                    ),
+                    row=1, col=idx, secondary_y=False
+                )
+
+                # Mark best validation loss
+                best_idx = metrics['val_loss'].index(min(metrics['val_loss']))
+                best_epoch = metrics['epoch'][best_idx]
+                best_val_loss = min(metrics['val_loss'])
+
+                fig.add_annotation(
+                    x=best_epoch,
+                    y=best_val_loss,
+                    text=f"Best: {best_val_loss:.4f}",
+                    showarrow=True,
+                    arrowhead=2,
+                    row=1, col=idx
+                )
+
+        elif plot_type == 'learning':
+            # Learning rate and gradient norm
+            if len(metrics['learning_rate']) > 0:
+                fig.add_trace(
+                    go.Scatter(
+                        x=epochs, y=metrics['learning_rate'],
+                        name=f'LR ({dataset["name"]})',
+                        line=dict(color='cyan', width=2),
+                        legendgroup=f'dataset{idx}'
+                    ),
+                    row=1, col=idx, secondary_y=False
+                )
+
+            if len(metrics['gradient_norm']) > 0:
+                fig.add_trace(
+                    go.Scatter(
+                        x=epochs, y=metrics['gradient_norm'],
+                        name=f'Grad ({dataset["name"]})',
+                        line=dict(color='gray', width=2),
+                        legendgroup=f'dataset{idx}'
+                    ),
+                    row=1, col=idx, secondary_y=True
+                )
+
+    # Update layout
+    title = 'Loss Comparison' if plot_type == 'loss' else 'Learning Dynamics Comparison'
+    fig.update_layout(
+        title={
+            'text': title,
+            'font': {'size': 24 if full_size else 20},
+            'x': 0.5,
+            'xanchor': 'center'
+        },
+        height=600 if full_size else 500,
+        hovermode='x unified',
+        showlegend=True,
+        plot_bgcolor='rgba(240, 240, 240, 0.3)',
+        paper_bgcolor='white'
+    )
+
+    # Update axes
+    for i in range(1, num_datasets + 1):
+        fig.update_xaxes(title_text="Epoch", row=1, col=i)
+        if plot_type == 'loss':
+            fig.update_yaxes(title_text="Loss" if i == 1 else "", row=1, col=i, secondary_y=False)
+        else:
+            fig.update_yaxes(title_text="Learning Rate" if i == 1 else "", row=1, col=i, secondary_y=False)
+            fig.update_yaxes(title_text="Gradient Norm" if i == num_datasets else "", row=1, col=i, secondary_y=True)
+
+    return fig
+
+
+def create_comparison_dashboard(datasets, temp_dir):
+    """Create a comparison dashboard for multiple datasets with all visualizations."""
+
+    # Create all comparison plots
+    eval_fig = create_comparison_evaluation_plot(datasets, full_size=False)
+    detailed_fig = create_comparison_detailed_subplots(datasets, full_size=False)
+    convergence_fig = create_comparison_convergence_plot(datasets, full_size=False)
+    learning_fig = create_comparison_learning_dynamics_plot(datasets, full_size=False)
+
+    # Convert to HTML
+    eval_html = eval_fig.to_html(include_plotlyjs='cdn', div_id="eval_compare")
+    detailed_html = detailed_fig.to_html(include_plotlyjs='cdn', div_id="detailed_compare")
+    convergence_html = convergence_fig.to_html(include_plotlyjs='cdn', div_id="convergence_compare")
+    learning_html = learning_fig.to_html(include_plotlyjs='cdn', div_id="learning_compare")
+
+    # Create comparison statistics table with hyperparameters
+    stats_html = create_comparison_statistics_table(datasets)
+
+    # Create summary cards for key metrics
+    summary_cards_html = """
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    """
+
+    for idx, dataset in enumerate(datasets):
+        color = ['#1f77b4', '#2ca02c', '#d62728'][idx % 3]
+        val_ap = dataset['stats'].get('val_ap', 0)
+        test_ap = dataset['stats'].get('test_ap', 0)
+        best_loss = dataset['stats'].get('best_val_loss', 0)
+        best_epoch = dataset['stats'].get('best_epoch', 0)
+
+        summary_cards_html += f"""
+        <div style="background: white; border-radius: 10px; padding: 25px;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-left: 5px solid {color};">
+            <h3 style="margin: 0 0 20px 0; color: #333; font-size: 1.4em;">{dataset['name']}</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px;">
+                    <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 5px;">Validation AP</div>
+                    <div style="font-size: 1.8em; font-weight: bold; color: {color};">{val_ap:.3f}</div>
+                </div>
+                <div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px;">
+                    <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 5px;">Test AP</div>
+                    <div style="font-size: 1.8em; font-weight: bold; color: {color};">{test_ap:.3f}</div>
+                </div>
+            </div>
+            <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 5px;">
+                    <div style="color: #6c757d; font-size: 0.85em;">Best Val Loss</div>
+                    <div style="font-size: 1.3em; font-weight: 600; color: #333;">{best_loss:.4f}</div>
+                </div>
+                <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 5px;">
+                    <div style="color: #6c757d; font-size: 0.85em;">Best Epoch</div>
+                    <div style="font-size: 1.3em; font-weight: 600; color: #333;">{best_epoch}</div>
+                </div>
+            </div>
+        </div>
+        """
+
+    summary_cards_html += "</div>"
+
+    # Build dashboard HTML
+    dashboard_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Training Comparison Dashboard</title>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+            }}
+
+            .dashboard-header {{
+                text-align: center;
+                color: white;
+                margin-bottom: 40px;
+            }}
+
+            .dashboard-header h1 {{
+                font-size: 3em;
+                margin: 0;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                font-weight: 600;
+            }}
+
+            .dashboard-header p {{
+                font-size: 1.2em;
+                margin-top: 10px;
+                opacity: 0.95;
+            }}
+
+            .plot-container {{
+                background: white;
+                border-radius: 15px;
+                padding: 25px;
+                margin-bottom: 30px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                transition: transform 0.3s ease;
+            }}
+
+            .plot-container:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 12px 35px rgba(0,0,0,0.25);
+            }}
+
+            .plot-title {{
+                font-size: 1.8em;
+                font-weight: 600;
+                color: #333;
+                margin-bottom: 20px;
+                padding-bottom: 12px;
+                border-bottom: 3px solid #667eea;
+                display: flex;
+                align-items: center;
+            }}
+
+            .plot-description {{
+                font-size: 0.95em;
+                color: #6c757d;
+                margin-bottom: 20px;
+                line-height: 1.5;
+            }}
+
+            .section-divider {{
+                height: 2px;
+                background: linear-gradient(90deg, transparent, #667eea, transparent);
+                margin: 40px 0;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="dashboard-header">
+            <h1>📊 Model Training Comparison Dashboard</h1>
+            <p>Comprehensive side-by-side analysis of {len(datasets)} training runs</p>
+        </div>
+
+        {summary_cards_html}
+
+        {stats_html}
+
+        <div class="section-divider"></div>
+
+        <div class="plot-container">
+            <div class="plot-title">🎯 Evaluation Metrics Comparison</div>
+            <div class="plot-description">
+                Compare validation and test performance across all metrics. Solid lines show validation, dashed lines show test results.
+            </div>
+            {eval_html}
+        </div>
+
+        <div class="plot-container">
+            <div class="plot-title">📈 Detailed Training Analysis</div>
+            <div class="plot-description">
+                Top row: Training vs validation loss curves with best epoch marked.<br>
+                Middle row: Loss component breakdown showing contribution of each loss type.<br>
+                Bottom row: Training-validation gap analysis (smaller is better).
+            </div>
+            {detailed_html}
+        </div>
+
+        <div class="plot-container">
+            <div class="plot-title">📉 Convergence & Stability Analysis</div>
+            <div class="plot-description">
+                Top row: Loss convergence on logarithmic scale for better visualization of later epochs.<br>
+                Bottom row: Epoch-to-epoch loss change rate showing training stability.
+            </div>
+            {convergence_html}
+        </div>
+
+        <div class="plot-container">
+            <div class="plot-title">⚡ Learning Dynamics</div>
+            <div class="plot-description">
+                Top row: Learning rate schedule with marked LR drops.<br>
+                Bottom row: Gradient norm evolution showing optimization dynamics (smoothed trend in red).
+            </div>
+            {learning_html}
+        </div>
+
+        <div style="text-align: center; color: white; padding: 30px; opacity: 0.9;">
+            <p style="font-size: 1.1em;">💡 Tip: Hover over plots for detailed values | Plots are interactive - zoom, pan, and explore!</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return dashboard_html
+
+
+def create_comparison_statistics_table(datasets):
+    """Create a comparison table for multiple datasets with hyperparameters."""
+
+    html = """
+    <div style="background: white; border-radius: 15px; padding: 20px; margin-bottom: 30px; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+        <h2 style="color: #333; margin-bottom: 20px; border-bottom: 2px solid #667eea; 
+                   padding-bottom: 10px; font-size: 1.8em;">📊 Performance Comparison</h2>
+
+        <!-- Performance Metrics Table -->
+        <h3 style="color: #495057; margin-top: 20px; margin-bottom: 15px; font-size: 1.4em;">📈 Training & Evaluation Metrics</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 1.1em;">
+            <thead>
+                <tr style="background: #f8f9fa;">
+                    <th style="padding: 15px; text-align: left; border-bottom: 2px solid #667eea; font-size: 1.2em;">Metric</th>
+    """
+
+    # Add column headers for each dataset
+    for dataset in datasets:
+        html += f'<th style="padding: 15px; text-align: center; border-bottom: 2px solid #667eea; font-size: 1.2em;">{dataset["name"]}</th>'
+
+    html += """
+            </tr>
+        </thead>
+        <tbody>
+    """
+
+    # Define metrics to compare
+    comparison_metrics = [
+        ('Total Epochs', 'total_epochs', '{:.0f}'),
+        ('Best Val Loss', 'best_val_loss', '{:.4f}'),
+        ('Final Train Loss', 'final_train_loss', '{:.4f}'),
+        ('Final Val Loss', 'final_val_loss', '{:.4f}'),
+        ('Train Loss Reduction %', 'train_loss_reduction', '{:.2f}'),
+        ('Val Loss Reduction %', 'val_loss_reduction', '{:.2f}'),
+        ('Val AP', 'val_ap', '{:.3f}'),
+        ('Val AP50', 'val_ap50', '{:.3f}'),
+        ('Val AP75', 'val_ap75', '{:.3f}'),
+        ('Test AP', 'test_ap', '{:.3f}'),
+        ('Test AP50', 'test_ap50', '{:.3f}'),
+        ('Test AP75', 'test_ap75', '{:.3f}'),
+    ]
+
+    for metric_name, metric_key, format_str in comparison_metrics:
+        html += f"""
+            <tr style="border-bottom: 1px solid #e0e0e0;">
+                <td style="padding: 14px; font-weight: 600; color: #495057; font-size: 1.05em;">{metric_name}</td>
+        """
+
+        values = []
+        for dataset in datasets:
+            if metric_key in dataset['stats']:
+                value = dataset['stats'][metric_key]
+                values.append(value)
+                formatted_value = format_str.format(value)
+            else:
+                values.append(None)
+                formatted_value = 'N/A'
+
+            # Highlight best value
+            style = "padding: 14px; text-align: center; font-family: monospace; font-size: 1.1em;"
+            if values and value is not None and len([v for v in values if v is not None]) > 1:
+                if 'loss' in metric_key.lower() and 'reduction' not in metric_key:
+                    # For loss, lower is better
+                    if value == min(v for v in values if v is not None):
+                        style += " color: #28a745; font-weight: bold; background-color: rgba(40, 167, 69, 0.1);"
+                else:
+                    # For AP metrics and reduction percentages, higher is better
+                    if value == max(v for v in values if v is not None):
+                        style += " color: #28a745; font-weight: bold; background-color: rgba(40, 167, 69, 0.1);"
+
+            html += f'<td style="{style}">{formatted_value}</td>'
+
+        html += '</tr>'
+
+    html += """
+        </tbody>
+    </table>
+    """
+
+    # Add Hyperparameters Comparison Table
+    html += """
+        <h3 style="color: #495057; margin-top: 30px; margin-bottom: 15px; font-size: 1.4em;">⚙️ Hyperparameters Comparison</h3>
+        <div style="max-height: 600px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 1.05em;">
+            <thead style="position: sticky; top: 0; background: white; z-index: 10;">
+                <tr style="background: #f8f9fa;">
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #667eea; font-size: 1.1em;">Parameter</th>
+    """
+
+    # Add column headers for hyperparameters
+    for dataset in datasets:
+        html += f'<th style="padding: 12px; text-align: center; border-bottom: 2px solid #667eea; font-size: 1.1em;">{dataset["name"]}</th>'
+
+    html += """
+            </tr>
+        </thead>
+        <tbody>
+    """
+
+    # Collect all unique hyperparameters from all datasets
+    all_hyperparams = set()
+    for dataset in datasets:
+        all_hyperparams.update(dataset['specs']['hyperparameters'].keys())
+
+    # Group hyperparameters by category
+    hyperparam_groups = [
+        ('Model Architecture', ['backbone_name', 'num_classes', 'image_size']),
+        ('NMS Configuration', ['nms_method', 'iou_thresh', 'score_thresh', 'sigma',
+                               'pyfunc', 'max_nms_inputs', 'max_output_size']),
+        ('Loss Parameters', ['alpha', 'gamma', 'delta', 'box_loss_weight', 'label_smoothing']),
+        ('Learning Rate', ['learning_rate', 'lr_warmup_init', 'lr_warmup_epoch',
+                           'lr_decay_method', 'first_lr_drop_epoch', 'second_lr_drop_epoch',
+                           'poly_lr_power']),
+        ('Optimization', ['momentum', 'optimizer', 'weight_decay', 'clip_gradients_norm',
+                          'moving_average_decay']),
+        ('Augmentation', ['input_rand_hflip', 'jitter_min', 'jitter_max',
+                          'autoaugment_policy', 'grid_mask']),
+        ('Anchors/Detection', ['anchor_scale', 'aspect_ratios', 'num_scales']),
+        ('Training Settings', ['skip_crowd_during_training', 'max_instances_per_image',
+                               'mixed_precision', 'drop_remainder', 'map_freq'])
+    ]
+
+    for group_name, params in hyperparam_groups:
+        # Only show group if at least one param exists
+        group_params = [p for p in params if p in all_hyperparams]
+        if not group_params:
+            continue
+
+        # Add group header
+        html += f"""
+            <tr style="background: #e9ecef;">
+                <td colspan="{len(datasets) + 1}" style="padding: 10px; font-weight: bold; 
+                    color: #667eea; font-size: 1.05em; border-top: 1px solid #dee2e6;">
+                    {group_name}
+                </td>
+            </tr>
+        """
+
+        for param in group_params:
+            param_label = param.replace('_', ' ').title()
+            html += f"""
+                <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 10px 12px; color: #6c757d; font-size: 0.95em;">
+                        {param_label}
+                    </td>
+            """
+
+            values = []
+            for dataset in datasets:
+                value = dataset['specs']['hyperparameters'].get(param, 'N/A')
+                values.append(value)
+
+                # Check if values differ
+                style = "padding: 10px 12px; text-align: center; font-family: monospace; font-size: 1.05em;"
+                if len(set(values)) > 1 and value != 'N/A':
+                    # Highlight differences
+                    style += " background-color: rgba(255, 193, 7, 0.15); font-weight: 600;"
+
+                # Special formatting for certain values
+                if value in ['True', 'False']:
+                    color = '#28a745' if value == 'True' else '#dc3545'
+                    style += f" color: {color}; font-weight: bold;"
+
+                html += f'<td style="{style}">{value}</td>'
+
+            html += '</tr>'
+
+    # Add any remaining parameters not in groups
+    remaining_params = all_hyperparams - set(sum([params for _, params in hyperparam_groups], []))
+    if remaining_params:
+        html += f"""
+            <tr style="background: #e9ecef;">
+                <td colspan="{len(datasets) + 1}" style="padding: 10px; font-weight: bold; 
+                    color: #667eea; font-size: 1.05em; border-top: 1px solid #dee2e6;">
+                    Other Parameters
+                </td>
+            </tr>
+        """
+
+        for param in sorted(remaining_params):
+            param_label = param.replace('_', ' ').title()
+            html += f"""
+                <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 10px 12px; color: #6c757d; font-size: 0.95em;">
+                        {param_label}
+                    </td>
+            """
+
+            values = []
+            for dataset in datasets:
+                value = dataset['specs']['hyperparameters'].get(param, 'N/A')
+                values.append(value)
+
+                style = "padding: 10px 12px; text-align: center; font-family: monospace; font-size: 1.05em;"
+                if len(set(values)) > 1 and value != 'N/A':
+                    style += " background-color: rgba(255, 193, 7, 0.15); font-weight: 600;"
+
+                html += f'<td style="{style}">{value}</td>'
+
+            html += '</tr>'
+
+    html += """
+        </tbody>
+    </table>
+    </div>
+
+    <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+        <p style="margin: 0; color: #6c757d; font-size: 0.9em;">
+            <strong>Legend:</strong> 
+            <span style="background-color: rgba(40, 167, 69, 0.2); padding: 2px 6px; border-radius: 3px;">Best value</span>
+            <span style="background-color: rgba(255, 193, 7, 0.2); padding: 2px 6px; border-radius: 3px; margin-left: 10px;">Differs between models</span>
+        </p>
+    </div>
+    </div>
+    """
+
+    return html
+
+
+class DatasetSelector:
+    """GUI for selecting multiple datasets to compare."""
+
+    def __init__(self):
+        self.datasets = []
+        self.root = None
+
+    def select_datasets(self):
+        """Open GUI for dataset selection."""
+        self.root = tk.Tk()
+        self.root.title("Select Training Logs to Compare")
+        self.root.geometry("600x400")
+
+        # Header
+        header = tk.Label(
+            self.root,
+            text="Select Training Logs for Comparison",
+            font=("Arial", 16, "bold")
+        )
+        header.pack(pady=10)
+
+        # Instructions
+        instructions = tk.Label(
+            self.root,
+            text="Add up to 3 training log files to compare side-by-side",
+            font=("Arial", 10)
+        )
+        instructions.pack()
+
+        # Dataset list frame
+        list_frame = tk.Frame(self.root)
+        list_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+
+        # Listbox for datasets
+        self.listbox = tk.Listbox(list_frame, height=10)
+        self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Scrollbar
+        scrollbar = tk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.listbox.config(yscrollcommand=scrollbar.set)
+        scrollbar.config(command=self.listbox.yview)
+
+        # Button frame
+        button_frame = tk.Frame(self.root)
+        button_frame.pack(pady=10)
+
+        # Add dataset button
+        add_btn = tk.Button(
+            button_frame,
+            text="Add Dataset",
+            command=self.add_dataset,
+            bg="#4CAF50",
+            fg="white",
+            padx=20,
+            pady=5
+        )
+        add_btn.pack(side=tk.LEFT, padx=5)
+
+        # Remove dataset button
+        remove_btn = tk.Button(
+            button_frame,
+            text="Remove Selected",
+            command=self.remove_dataset,
+            bg="#f44336",
+            fg="white",
+            padx=20,
+            pady=5
+        )
+        remove_btn.pack(side=tk.LEFT, padx=5)
+
+        # Clear all button
+        clear_btn = tk.Button(
+            button_frame,
+            text="Clear All",
+            command=self.clear_datasets,
+            bg="#FF9800",
+            fg="white",
+            padx=20,
+            pady=5
+        )
+        clear_btn.pack(side=tk.LEFT, padx=5)
+
+        # Visualize button
+        self.visualize_btn = tk.Button(
+            button_frame,
+            text="Visualize",
+            command=self.visualize,
+            bg="#2196F3",
+            fg="white",
+            padx=30,
+            pady=5,
+            state=tk.DISABLED
+        )
+        self.visualize_btn.pack(side=tk.LEFT, padx=20)
+
+        # Status label
+        self.status_label = tk.Label(
+            self.root,
+            text="No datasets selected",
+            font=("Arial", 10),
+            fg="gray"
+        )
+        self.status_label.pack(pady=5)
+
+        self.root.mainloop()
+
+    def add_dataset(self):
+        """Add a dataset via file dialog."""
+        if len(self.datasets) >= 3:
+            messagebox.showwarning("Limit Reached", "Maximum of 3 datasets can be compared")
+            return
+
+        filepath = filedialog.askopenfilename(
+            title="Select Training Log File",
+            filetypes=[("Log files", "*.log"), ("Text files", "*.txt"), ("All files", "*.*")]
+        )
+
+        if filepath:
+            # Get a custom name for the dataset
+            name = simpledialog.askstring(
+                "Dataset Name",
+                f"Enter a name for this dataset:",
+                initialvalue=Path(filepath).stem
+            )
+
+            if name:
+                self.datasets.append({'path': filepath, 'name': name})
+                self.listbox.insert(tk.END, f"{name} - {Path(filepath).name}")
+                self.update_status()
+
+    def remove_dataset(self):
+        """Remove selected dataset."""
+        selection = self.listbox.curselection()
+        if selection:
+            idx = selection[0]
+            self.listbox.delete(idx)
+            del self.datasets[idx]
+            self.update_status()
+
+    def clear_datasets(self):
+        """Clear all datasets."""
+        self.listbox.delete(0, tk.END)
+        self.datasets = []
+        self.update_status()
+
+    def update_status(self):
+        """Update status label and button states."""
+        count = len(self.datasets)
+        if count == 0:
+            self.status_label.config(text="No datasets selected", fg="gray")
+            self.visualize_btn.config(state=tk.DISABLED)
+        else:
+            self.status_label.config(text=f"{count} dataset(s) selected", fg="green")
+            self.visualize_btn.config(state=tk.NORMAL)
+
+    def visualize(self):
+        """Start visualization."""
+        self.root.quit()
+        self.root.destroy()
+
+
+def visualize_training_comparison(dataset_configs):
+    """Visualize multiple training logs for comparison."""
+
+    datasets = []
+
+    for config in dataset_configs:
+        try:
+            # Parse metrics and specs for each dataset
+            metrics, eval_metrics = parse_training_log(config['path'])
+
+            # Try to find spec file
+            log_dir = Path(config['path']).parent
             spec_filepath = log_dir / "training_specs.txt"
+            model_specs = parse_model_specs(spec_filepath) if spec_filepath.exists() else {'main': {},
+                                                                                           'hyperparameters': {}}
 
-        model_specs = parse_model_specs(spec_filepath) if spec_filepath else {'main': {}, 'hyperparameters': {}}
+            # Calculate statistics
+            stats = calculate_statistics(metrics, eval_metrics)
 
-        if len(metrics['epoch']) == 0:
-            print("⚠️  No training data found in the log file!")
+            datasets.append({
+                'name': config['name'],
+                'metrics': metrics,
+                'eval_metrics': eval_metrics,
+                'specs': model_specs,
+                'stats': stats
+            })
+
+            print(f"✅ Loaded dataset: {config['name']}")
+
+        except Exception as e:
+            print(f"⚠️ Error loading {config['name']}: {e}")
+
+    if not datasets:
+        print("❌ No valid datasets loaded")
+        return False
+
+    print(f"\n🔄 Generating comparison visualizations for {len(datasets)} dataset(s)...")
+
+    # Create temp directory
+    temp_dir = tempfile.gettempdir()
+
+    if len(datasets) == 1:
+        # Single dataset - use original visualization
+        dashboard_html = create_dashboard_with_enlargement(
+            datasets[0]['metrics'],
+            datasets[0]['eval_metrics'],
+            datasets[0]['specs'],
+            temp_dir
+        )
+    else:
+        # Multiple datasets - use comparison view
+        dashboard_html = create_comparison_dashboard(datasets, temp_dir)
+
+    # Save and open dashboard
+    dashboard_file = os.path.join(temp_dir, "comparison_dashboard.html")
+    with open(dashboard_file, 'w', encoding='utf-8') as f:
+        f.write(dashboard_html)
+
+    print("\n📊 Opening comparison dashboard in browser...")
+    webbrowser.open(f"file://{dashboard_file}", new=2)
+
+    print(f"\n✅ Comparison dashboard opened: {dashboard_file}")
+
+    return True
+
+def create_comparison_convergence_plot(datasets, full_size=False):
+    """Create convergence analysis plots for comparison."""
+
+    num_datasets = len(datasets)
+
+    # Create subplot titles in correct row-major order
+    row1_titles = [f"<b>{d['name']}</b><br>Convergence (Log Scale)" for d in datasets]
+    row2_titles = [f"<b>{d['name']}</b><br>Loss Change Rate %" for d in datasets]
+    subplot_titles = row1_titles + row2_titles
+
+    fig = make_subplots(
+        rows=2, cols=num_datasets,
+        subplot_titles=subplot_titles,
+        specs=[[{"secondary_y": False} for _ in range(num_datasets)],
+               [{"secondary_y": False} for _ in range(num_datasets)]],
+        vertical_spacing=0.15,
+        horizontal_spacing=0.12
+    )
+
+    colors_set = [
+        {'train': 'rgb(31, 119, 180)', 'val': 'rgb(255, 127, 14)'},
+        {'train': 'rgb(44, 160, 44)', 'val': 'rgb(214, 39, 40)'},
+        {'train': 'rgb(148, 103, 189)', 'val': 'rgb(227, 119, 194)'}
+    ]
+
+    for idx, dataset in enumerate(datasets):
+        metrics = dataset['metrics']
+        epochs = metrics['epoch']
+        colors = colors_set[idx % 3]
+        col = idx + 1
+
+        # Row 1: Convergence Analysis (Log scale)
+        if len(metrics['loss']) > 0 and len(metrics['val_loss']) > 0:
+            # Filter out zero or negative values for log scale
+            positive_loss = [l if l > 0 else None for l in metrics['loss']]
+            positive_val_loss = [l if l > 0 else None for l in metrics['val_loss']]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=positive_loss,
+                    name='Training (log)',
+                    line=dict(color=colors['train'], width=3),
+                    connectgaps=False,
+                    legendgroup=f'log{col}',
+                    showlegend=(col == 1)
+                ),
+                row=1, col=col
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=positive_val_loss,
+                    name='Validation (log)',
+                    line=dict(color=colors['val'], width=3),
+                    connectgaps=False,
+                    legendgroup=f'log{col}',
+                    showlegend=(col == 1)
+                ),
+                row=1, col=col
+            )
+
+        # Row 2: Loss Change Rate
+        if len(metrics['loss']) > 1:
+            loss_change_rate = [0] + [
+                (metrics['loss'][i] - metrics['loss'][i - 1]) / metrics['loss'][i - 1] * 100
+                if metrics['loss'][i - 1] != 0 else 0
+                for i in range(1, len(metrics['loss']))
+            ]
+            val_loss_change_rate = [0] + [
+                (metrics['val_loss'][i] - metrics['val_loss'][i - 1]) / metrics['val_loss'][i - 1] * 100
+                if metrics['val_loss'][i - 1] != 0 else 0
+                for i in range(1, len(metrics['val_loss']))
+            ]
+
+            fig.add_trace(
+                go.Bar(
+                    x=epochs, y=loss_change_rate,
+                    name='Train Loss Change %',
+                    marker_color=colors['train'],
+                    opacity=0.6,
+                    legendgroup=f'change{col}',
+                    showlegend=(col == 1)
+                ),
+                row=2, col=col
+            )
+            fig.add_trace(
+                go.Bar(
+                    x=epochs, y=val_loss_change_rate,
+                    name='Val Loss Change %',
+                    marker_color=colors['val'],
+                    opacity=0.6,
+                    legendgroup=f'change{col}',
+                    showlegend=(col == 1)
+                ),
+                row=2, col=col
+            )
+
+            # Add zero line
+            fig.add_hline(y=0, line_dash="dash", line_color="gray", row=2, col=col)
+
+    # Update axes
+    for i in range(1, num_datasets + 1):
+        # Row 1 - Log scale
+        fig.update_yaxes(
+            type="log",
+            title_text="Loss (log scale)" if i == 1 else "",
+            row=1, col=i,
+            tickfont=dict(size=11),
+            title_font=dict(size=12)
+        )
+        fig.update_xaxes(title_text="", row=1, col=i, tickfont=dict(size=11))
+
+        # Row 2 - Change rate
+        fig.update_yaxes(
+            title_text="Change %" if i == 1 else "",
+            row=2, col=i,
+            tickfont=dict(size=11),
+            title_font=dict(size=12)
+        )
+        fig.update_xaxes(title_text="Epoch", row=2, col=i, tickfont=dict(size=11))
+
+    # Update layout
+    fig.update_layout(
+        title_text="Convergence and Stability Analysis",
+        title_font=dict(size=26 if full_size else 22),
+        title_x=0.5,
+        title_xanchor='center',
+        height=1000 if full_size else 900,
+        showlegend=True,
+        hovermode='x unified',
+        plot_bgcolor='rgba(240, 240, 240, 0.5)',
+        paper_bgcolor='white',
+        font=dict(size=12)
+    )
+
+    # Update subplot title font sizes
+    for annotation in fig['layout']['annotations']:
+        annotation['font'] = dict(size=title_size if full_size else 14)
+
+    return fig
+
+def create_comparison_learning_dynamics_plot(datasets, full_size=False):
+    """Create enhanced learning dynamics comparison with better visibility."""
+
+    num_datasets = len(datasets)
+
+    # Create subplot titles in correct row-major order
+    row1_titles = [f"<b>{d['name']}</b><br>Learning Rate" for d in datasets]
+    row2_titles = [f"<b>{d['name']}</b><br>Gradient Norm" for d in datasets]
+    subplot_titles = row1_titles + row2_titles
+
+    fig = make_subplots(
+        rows=2, cols=num_datasets,
+        subplot_titles=subplot_titles,
+        specs=[[{"secondary_y": False} for _ in range(num_datasets)],
+               [{"secondary_y": False} for _ in range(num_datasets)]],
+        vertical_spacing=0.15,
+        horizontal_spacing=0.12
+    )
+
+    colors_set = ['rgb(23, 190, 207)', 'rgb(188, 189, 34)', 'rgb(219, 64, 82)']
+
+    for idx, dataset in enumerate(datasets):
+        metrics = dataset['metrics']
+        epochs = metrics['epoch']
+        color = colors_set[idx % 3]
+        col = idx + 1
+
+        # Row 1: Learning Rate
+        if len(metrics['learning_rate']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['learning_rate'],
+                    name='Learning Rate',
+                    line=dict(color=color, width=3),
+                    mode='lines+markers',
+                    marker=dict(size=6),
+                    legendgroup=f'lr{col}',
+                    showlegend=(col == 1)
+                ),
+                row=1, col=col
+            )
+
+            # Add vertical lines for LR drops instead of crowded annotations
+            if len(metrics['learning_rate']) > 1:
+                for i in range(1, len(metrics['learning_rate'])):
+                    if metrics['learning_rate'][i] < metrics['learning_rate'][i - 1] * 0.5:
+                        fig.add_vline(
+                            x=epochs[i],
+                            line_width=2,
+                            line_dash="dash",
+                            line_color="red",
+                            opacity=0.5,
+                            row=1, col=col
+                        )
+
+        # Row 2: Gradient Norm
+        if len(metrics['gradient_norm']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['gradient_norm'],
+                    name='Gradient Norm',
+                    line=dict(color='gray', width=2),
+                    mode='lines',
+                    opacity=0.5,
+                    legendgroup=f'grad{col}',
+                    showlegend=(col == 1)
+                ),
+                row=2, col=col
+            )
+
+            # Add rolling average for clearer trend
+            if len(metrics['gradient_norm']) > 5:
+                window = min(5, len(metrics['gradient_norm']) // 4)
+                grad_smooth = np.convolve(metrics['gradient_norm'],
+                                          np.ones(window) / window, mode='valid')
+                epochs_smooth = epochs[window // 2:-(window // 2) if window > 1 else None]
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=epochs_smooth, y=grad_smooth,
+                        name='Gradient (Smoothed)',
+                        line=dict(color='red', width=3),
+                        legendgroup=f'grad_smooth{col}',
+                        showlegend=(col == 1)
+                    ),
+                    row=2, col=col
+                )
+
+    # Update axes
+    for i in range(1, num_datasets + 1):
+        # Row 1 - Learning Rate
+        fig.update_yaxes(
+            title_text="Learning Rate" if i == 1 else "",
+            row=1, col=i,
+            tickfont=dict(size=11),
+            title_font=dict(size=12)
+        )
+        fig.update_xaxes(title_text="", row=1, col=i, tickfont=dict(size=11))
+
+        # Row 2 - Gradient Norm
+        fig.update_yaxes(
+            title_text="Gradient Norm" if i == 1 else "",
+            row=2, col=i,
+            tickfont=dict(size=11),
+            title_font=dict(size=12)
+        )
+        fig.update_xaxes(title_text="Epoch", row=2, col=i, tickfont=dict(size=11))
+
+    # Update layout
+    fig.update_layout(
+        title_text="Learning Dynamics Analysis",
+        title_font=dict(size=26 if full_size else 22),
+        title_x=0.5,
+        title_xanchor='center',
+        height=1000 if full_size else 900,
+        showlegend=True,
+        hovermode='x unified',
+        plot_bgcolor='rgba(240, 240, 240, 0.5)',
+        paper_bgcolor='white',
+        font=dict(size=12)
+    )
+
+    # Update subplot title font sizes
+    for annotation in fig['layout']['annotations']:
+        annotation['font'] = dict(size=16 if full_size else 14)
+
+    return fig
+
+def create_comparison_detailed_subplots(datasets, full_size=False):
+    """Create detailed subplot analysis for comparison - similar to single mode."""
+
+    num_datasets = len(datasets)
+
+    # Adjust dimensions
+    height = 1600 if full_size else 1400
+    title_size = 16 if full_size else 14
+
+    # Create subplot titles in correct row-major order
+    row1_titles = [f"<b>{d['name']}</b><br>Loss Comparison" for d in datasets]
+    row2_titles = [f"<b>{d['name']}</b><br>Components Breakdown" for d in datasets]
+    row3_titles = [f"<b>{d['name']}</b><br>Train-Val Gap" for d in datasets]
+    subplot_titles = row1_titles + row2_titles + row3_titles
+
+    # Create subplots grid - 3 rows, num_datasets columns
+    fig = make_subplots(
+        rows=3, cols=num_datasets,
+        subplot_titles=subplot_titles,
+        specs=[[{"secondary_y": False} for _ in range(num_datasets)],
+               [{"secondary_y": False} for _ in range(num_datasets)],
+               [{"secondary_y": False} for _ in range(num_datasets)]],
+        vertical_spacing=0.12,
+        horizontal_spacing=0.12
+    )
+
+    colors_set = [
+        {'train': 'rgb(31, 119, 180)', 'val': 'rgb(255, 127, 14)'},
+        {'train': 'rgb(44, 160, 44)', 'val': 'rgb(214, 39, 40)'},
+        {'train': 'rgb(148, 103, 189)', 'val': 'rgb(227, 119, 194)'}
+    ]
+
+    for idx, dataset in enumerate(datasets):
+        metrics = dataset['metrics']
+        epochs = metrics['epoch']
+        colors = colors_set[idx % 3]
+        col = idx + 1
+
+        # Row 1: Overall Loss Comparison
+        if len(metrics['loss']) > 0 and len(metrics['val_loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['loss'],
+                    name=f'Training',
+                    line=dict(color=colors['train'], width=3),
+                    mode='lines+markers',
+                    marker=dict(size=6),
+                    legendgroup=f'dataset{col}',
+                    showlegend=(col == 1)
+                ),
+                row=1, col=col
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['val_loss'],
+                    name=f'Validation',
+                    line=dict(color=colors['val'], width=3),
+                    mode='lines+markers',
+                    marker=dict(size=6),
+                    legendgroup=f'dataset{col}',
+                    showlegend=(col == 1)
+                ),
+                row=1, col=col
+            )
+
+            # Add best point annotation
+            if len(metrics['val_loss']) > 0:
+                best_idx = metrics['val_loss'].index(min(metrics['val_loss']))
+                best_epoch = epochs[best_idx]
+                best_val = min(metrics['val_loss'])
+
+                fig.add_annotation(
+                    x=best_epoch,
+                    y=best_val,
+                    text=f"Best<br>{best_val:.4f}",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,
+                    arrowwidth=2,
+                    arrowcolor=colors['val'],
+                    bgcolor="white",
+                    bordercolor=colors['val'],
+                    row=1, col=col
+                )
+
+        # Row 2: Loss Components Breakdown
+        component_colors = {
+            'det': 'rgba(44, 160, 44, 0.7)',
+            'cls': 'rgba(214, 39, 40, 0.7)',
+            'box': 'rgba(148, 103, 189, 0.7)',
+            'reg': 'rgba(140, 86, 75, 0.7)'
+        }
+
+        if len(metrics['det_loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['det_loss'],
+                    name='Detection',
+                    stackgroup='components',
+                    fillcolor=component_colors['det'],
+                    line=dict(width=0.5),
+                    legendgroup=f'components{col}',
+                    showlegend=(col == 1)
+                ),
+                row=2, col=col
+            )
+        if len(metrics['cls_loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['cls_loss'],
+                    name='Classification',
+                    stackgroup='components',
+                    fillcolor=component_colors['cls'],
+                    line=dict(width=0.5),
+                    legendgroup=f'components{col}',
+                    showlegend=(col == 1)
+                ),
+                row=2, col=col
+            )
+        if len(metrics['box_loss']) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=epochs, y=metrics['box_loss'],
+                    name='Box',
+                    stackgroup='components',
+                    fillcolor=component_colors['box'],
+                    line=dict(width=0.5),
+                    legendgroup=f'components{col}',
+                    showlegend=(col == 1)
+                ),
+                row=2, col=col
+            )
+
+        # Row 3: Training vs Validation Gap
+        if len(metrics['loss']) > 0 and len(metrics['val_loss']) > 0:
+            gaps = [t - v for t, v in zip(metrics['loss'], metrics['val_loss'])]
+
+            # Color based on gap (green = small gap, red = large gap)
+            gap_colors = ['green' if abs(g) < 0.05 else 'orange' if abs(g) < 0.1 else 'red' for g in gaps]
+
+            fig.add_trace(
+                go.Bar(
+                    x=epochs, y=gaps,
+                    name='Train-Val Gap',
+                    marker_color=gap_colors,
+                    opacity=0.7,
+                    legendgroup=f'gap{col}',
+                    showlegend=(col == 1)
+                ),
+                row=3, col=col
+            )
+            fig.add_hline(y=0, line_dash="dash", line_color="gray", row=3, col=col)
+
+    # Update axes labels
+    for i in range(1, num_datasets + 1):
+        # Row 1
+        fig.update_xaxes(title_text="", row=1, col=i, tickfont=dict(size=11))
+        fig.update_yaxes(
+            title_text="Loss" if i == 1 else "",
+            row=1, col=i,
+            tickfont=dict(size=11),
+            title_font=dict(size=12)
+        )
+
+        # Row 2
+        fig.update_xaxes(title_text="", row=2, col=i, tickfont=dict(size=11))
+        fig.update_yaxes(
+            title_text="Loss Components" if i == 1 else "",
+            row=2, col=i,
+            tickfont=dict(size=11),
+            title_font=dict(size=12)
+        )
+
+        # Row 3
+        fig.update_xaxes(title_text="Epoch", row=3, col=i, tickfont=dict(size=11))
+        fig.update_yaxes(
+            title_text="Gap (Train - Val)" if i == 1 else "",
+            row=3, col=i,
+            tickfont=dict(size=11),
+            title_font=dict(size=12)
+        )
+
+    # Update layout
+    fig.update_layout(
+        title_text="Detailed Training Analysis Comparison",
+        title_font=dict(size=26 if full_size else 22),
+        title_x=0.5,
+        title_xanchor='center',
+        height=height,
+        showlegend=True,
+        hovermode='x unified',
+        plot_bgcolor='rgba(240, 240, 240, 0.5)',
+        paper_bgcolor='white',
+        font=dict(size=12)
+    )
+
+    # Update subplot title font sizes
+    for annotation in fig['layout']['annotations']:
+        annotation['font'] = dict(size=title_size)
+
+    return fig
+
+
+def visualize_training(log_filepath=None, spec_filepath=None, compare_mode=False):
+    """Main function to visualize training results."""
+
+    if compare_mode or log_filepath is None:
+        # Open dataset selector GUI
+        selector = DatasetSelector()
+        selector.select_datasets()
+
+        if not selector.datasets:
+            print("No datasets selected")
             return False
 
-        print(f"✅ Found {len(metrics['epoch'])} epochs of training data")
-        if eval_metrics['validation']:
-            print(f"✅ Found validation metrics")
-        if eval_metrics['test']:
-            print(f"✅ Found test metrics")
-        print("\n🔄 Generating visualizations...")
+        return visualize_training_comparison(selector.datasets)
 
-        # Create temp directory
-        temp_dir = tempfile.gettempdir()
+    else:
+        # Single dataset mode (original functionality)
+        try:
+            metrics, eval_metrics = parse_training_log(log_filepath)
 
-        # Create dashboard with enlargement functionality
-        dashboard_html = create_dashboard_with_enlargement(metrics, eval_metrics, model_specs, temp_dir)
+            # Try to find spec file if not provided
+            if spec_filepath is None:
+                log_dir = Path(log_filepath).parent
+                spec_filepath = log_dir / "training_specs.txt"
 
-        # Calculate statistics
-        stats = calculate_statistics(metrics, eval_metrics)
-        stats_html = create_statistics_table(stats)
+            model_specs = parse_model_specs(spec_filepath) if spec_filepath else {'main': {}, 'hyperparameters': {}}
 
-        # Save dashboard with UTF-8 encoding
-        dashboard_file = os.path.join(temp_dir, "training_dashboard.html")
-        with open(dashboard_file, 'w', encoding='utf-8') as f:
-            f.write(dashboard_html)
+            if len(metrics['epoch']) == 0:
+                print("⚠️  No training data found in the log file!")
+                return False
 
-        # Save statistics with UTF-8 encoding
-        stats_file = os.path.join(temp_dir, "training_statistics.html")
-        with open(stats_file, 'w', encoding='utf-8') as f:
-            f.write(stats_html)
+            print(f"✅ Found {len(metrics['epoch'])} epochs of training data")
+            if eval_metrics['validation']:
+                print(f"✅ Found validation metrics")
+            if eval_metrics['test']:
+                print(f"✅ Found test metrics")
+            print("\n🔄 Generating visualizations...")
 
-        # Open both in browser
-        print("\n📊 Opening visualizations in browser...")
-        webbrowser.open(f"file://{dashboard_file}", new=2)
-        webbrowser.open(f"file://{stats_file}", new=2)
+            # Create temp directory
+            temp_dir = tempfile.gettempdir()
 
-        print("\n✅ Visualizations opened in browser:")
-        print(f"  1. Dashboard (with enlargeable plots): {dashboard_file}")
-        print(f"  2. Statistics Summary: {stats_file}")
-        print("\n💡 Tip: Hover over any plot and click the ⤢ button to open it in a larger window!")
-        print("     Individual subplots also have their own enlarge buttons.")
+            # Create dashboard with enlargement functionality
+            dashboard_html = create_dashboard_with_enlargement(metrics, eval_metrics, model_specs, temp_dir)
 
-        # Print summary to console
-        print("\n" + "=" * 60)
-        print("TRAINING SUMMARY")
-        print("=" * 60)
-        for key, value in stats.items():
-            display_name = key.replace('_', ' ').title()
-            if isinstance(value, float):
-                print(f"{display_name:.<30} {value:.4f}")
-            else:
-                print(f"{display_name:.<30} {value}")
-        print("=" * 60)
+            # Calculate statistics
+            stats = calculate_statistics(metrics, eval_metrics)
+            stats_html = create_statistics_table(stats)
 
-        return True
+            # Save dashboard with UTF-8 encoding
+            dashboard_file = os.path.join(temp_dir, "training_dashboard.html")
+            with open(dashboard_file, 'w', encoding='utf-8') as f:
+                f.write(dashboard_html)
 
-    except Exception as e:
-        print(f"\n⚠️  Error during visualization: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+            # Save statistics with UTF-8 encoding
+            stats_file = os.path.join(temp_dir, "training_statistics.html")
+            with open(stats_file, 'w', encoding='utf-8') as f:
+                f.write(stats_html)
+
+            # Open both in browser
+            print("\n📊 Opening visualizations in browser...")
+            webbrowser.open(f"file://{dashboard_file}", new=2)
+            webbrowser.open(f"file://{stats_file}", new=2)
+
+            print("\n✅ Visualizations opened in browser:")
+            print(f"  1. Dashboard: {dashboard_file}")
+            print(f"  2. Statistics: {stats_file}")
+
+            return True
+
+        except Exception as e:
+            print(f"\n⚠️  Error during visualization: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
 
 if __name__ == "__main__":
-    # Standalone mode - ask for file
-    log_file = input("Enter the path to your log file: ").strip()
+    import sys
 
-    # Remove quotes if present
-    log_file = log_file.strip('"').strip("'")
+    # Check for command line arguments
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--compare":
+            # Comparison mode
+            visualize_training(compare_mode=True)
+        else:
+            # Single file mode
+            log_file = sys.argv[1].strip('"').strip("'")
+            visualize_training(log_file)
+    else:
+        # Interactive mode
+        print("Training Log Visualizer")
+        print("-" * 40)
+        print("1. Visualize single training log")
+        print("2. Compare multiple training logs")
+        print("-" * 40)
 
-    try:
-        if visualize_training(log_file):
-            print("\n" + "=" * 80)
-            print("✅ Visualization complete!")
-            print("=" + 80)
-            input("\nPress Enter to exit...")
-    except FileNotFoundError:
-        print(f"Error: Could not find file '{log_file}'")
+        choice = input("Enter your choice (1 or 2): ").strip()
+
+        if choice == "2":
+            visualize_training(compare_mode=True)
+        else:
+            log_file = input("Enter the path to your log file: ").strip()
+            log_file = log_file.strip('"').strip("'")
+            visualize_training(log_file)
+
         input("\nPress Enter to exit...")

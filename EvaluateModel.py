@@ -15,7 +15,7 @@ from tflite_model_maker import object_detector
 from tflite_model_maker.object_detector import EfficientDetSpec
 
 # --- Paths ---
-EXPORT_DIR = "kettlebell models"
+EXPORT_DIR = "kettlebell_models"
 SAVED_MODEL_DIR = f"{EXPORT_DIR}/saved_model"
 TEST_DIR = "FINAL_KB_DATA/test"
 KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
@@ -55,7 +55,7 @@ print("Evaluation metrics:", metrics)
 # import numpy as np
 #
 # # Load the TFLite model
-# interpreter = tf.lite.Interpreter(model_path='kettlebell models/efficientdet_lite0_whole.tflite')
+# interpreter = tf.lite.Interpreter(model_path='kettlebell_models/efficientdet_lite0_whole.tflite')
 # interpreter.allocate_tensors()
 #
 # # Get input and output details

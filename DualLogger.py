@@ -23,7 +23,16 @@ class DualLogger:
         self.log.close()
 
 
-def save_specifications(export_dir, batch_size, epochs, hparams, train_whole_model, backbone, architecture):
+def save_specifications(
+    export_dir,
+    batch_size,
+    epochs,
+    hparams,
+    train_whole_model,
+    backbone,
+    architecture,
+    mixed_precision_policy=None
+):
     """Save training specifications to a formatted text file."""
 
     specs_filepath = os.path.join(export_dir, "training_specs.txt")
@@ -41,6 +50,10 @@ def save_specifications(export_dir, batch_size, epochs, hparams, train_whole_mod
         f.write(f"Train Whole Model:       {train_whole_model}\n")
         f.write(f"Architecture:            {architecture}\n")
         f.write(f"Backbone:                {backbone}\n")
+        if mixed_precision_policy is not None:
+            f.write(f"Mixed Precision Policy:  {mixed_precision_policy}\n")
+        else:
+            f.write(f"Mixed Precision Policy:  (not specified)\n")
         f.write("\n")
 
         # Model specification
@@ -116,10 +129,10 @@ def save_specifications(export_dir, batch_size, epochs, hparams, train_whole_mod
         f.write("TRAINING SETTINGS:\n")
         f.write(f"  skip_crowd_during_training: {hparams['skip_crowd_during_training']}\n")
         f.write(f"  max_instances_per_image:    {hparams['max_instances_per_image']}\n")
-        f.write(f"  mixed_precision:           {hparams['mixed_precision']}\n")
-        f.write(f"  drop_remainder:            {hparams['drop_remainder']}\n")
-        f.write(f"  map_freq:                  {hparams['map_freq']}\n")
-        f.write(f"  num_epochs:                {hparams['num_epochs']}\n")
+        f.write(f"  mixed_precision:            {hparams['mixed_precision']}\n")
+        f.write(f"  drop_remainder:             {hparams['drop_remainder']}\n")
+        f.write(f"  map_freq:                   {hparams['map_freq']}\n")
+        f.write(f"  num_epochs:                 {hparams['num_epochs']}\n")
         f.write("\n")
 
         f.write("=" * 80 + "\n")
