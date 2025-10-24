@@ -3,8 +3,9 @@ import shutil
 import sys
 import datetime
 import os
-import os
 import sys
+import random
+import numpy as np
 from pathlib import Path
 
 from tensorflow.keras import mixed_precision
@@ -16,6 +17,19 @@ import tflite_model_maker
 from tflite_model_maker import object_detector
 from DualLogger import DualLogger, save_specifications
 from training_visualizer.core.visualizer import visualize_training
+
+"""
+Settings to implement determinism in an effort to reduce variability caused by mixed precision
+When implemented, this error was thrown:
+When determinism is enabled, random ops must have a seed specified.
+	 [[{{node blocks_2/random_uniform/RandomUniform}}]] [Op:__inference_train_function_153964]
+"""
+# os.environ["TF_DETERMINISTIC_OPS"] = "1"   # best-effort determinism in TF 2.x
+# os.environ["PYTHONHASHSEED"] = "1337"
+#
+# random.seed(1337)
+# np.random.seed(1337)
+# tf.random.set_seed(1337)
 
 # -----------------------------
 # Redirect temp files to D:
@@ -55,7 +69,7 @@ HPARAMS = {
     'nms_configs': {
         'method': 'gaussian',
         'iou_thresh': 0.4,
-        'score_thresh': 0.7,
+        'score_thresh': 0.65,
         'sigma': 0.5,
         'pyfunc': False,
         'max_nms_inputs': 5000,
@@ -63,9 +77,9 @@ HPARAMS = {
     },
     'alpha': 0.25,
     'gamma': 1.5,
-    'delta': 0.05,
+    'delta': 0.1,
     'box_loss_weight': 60.0,
-    'label_smoothing': 0.10,
+    'label_smoothing': 0.15,
     'learning_rate': 0.0045,
     'lr_warmup_init': 0.0003,
     'lr_warmup_epoch': 8.0,
@@ -79,12 +93,12 @@ HPARAMS = {
     'clip_gradients_norm': 10.0,
     'moving_average_decay': 0.9998,
     'input_rand_hflip': True,
-    'jitter_min': 0.6,
-    'jitter_max': 1.4,
+    'jitter_min': 0.8,
+    'jitter_max': 1.25,
     'autoaugment_policy': 'v2',
     'grid_mask': False,
     'anchor_scale': 4.0,
-    'aspect_ratios': [1.0, 2.0, 0.5],
+    'aspect_ratios': [0.5, 1.0, 2.0],
     'num_scales': 3,
     'skip_crowd_during_training': True,
     'max_instances_per_image': 100,
@@ -313,11 +327,7 @@ if __name__ == "__main__":
         # -----------------------------
         # Export model
         # -----------------------------
-        tflite_filename = (
-            f"__BARBELL_{ARCHITECTURE}_whole.tflite"
-            if TRAIN_WHOLE_MODEL
-            else f"{ARCHITECTURE}.tflite"
-        )
+        tflite_filename = f"__BARBELL__{ARCHITECTURE}_{date_str}.tflite"
 
         print(f"\nExporting model to {EXPORT_DIR}...")
         model.export(
@@ -371,4 +381,3 @@ if __name__ == "__main__":
             print("\n" + "=" * 80)
             print("✅ Visualization complete!")
             print("=" * 80)
-

@@ -1,29 +1,15 @@
-#
-# import os
-# import shutil
-# import threading
-# import tkinter as tk
-# import xml.etree.ElementTree as ET
-# from collections import defaultdict
-# from multiprocessing import Pool, cpu_count
-# from pathlib import Path
-# from tkinter import ttk, filedialog, messagebox
-#
-# import cv2
-# import numpy as np
-# from PIL import Image, ImageTk
-#
-#
-
 import os
 import shutil
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import tkinter as tk
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-from multiprocessing import Pool, cpu_count, Manager
+from multiprocessing import Pool, cpu_count, Manager, Process, Queue as MPQueue
 from pathlib import Path
 from tkinter import ttk, filedialog, messagebox
+from typing import Dict, List, Optional, Tuple
+import glob
 
 import cv2
 import numpy as np
@@ -111,7 +97,48 @@ class DataCleaningTab:
         ttk.Button(basic_button_frame, text="Stop",
                    command=self.stop_cleaning).pack(side='left', padx=5)
 
-        # Section 3: Outlier Detection - Side by Side Layout
+        # Section 3: XML Filename/Path Sync
+        ttk.Label(main_frame, text="XML Filename/Path Synchronization",
+                  font=('TkDefaultFont', 12, 'bold')).pack(anchor='w', pady=(20, 10))
+
+        # XML Sync frame
+        self.xml_sync_frame = ttk.LabelFrame(main_frame, text="Sync Settings", padding="10")
+        self.xml_sync_frame.pack(fill='x', pady=(0, 20))
+
+        # Options for XML sync
+        self.sync_recursive_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(self.xml_sync_frame, text="Process all subfolders recursively",
+                        variable=self.sync_recursive_var,
+                        command=self.on_sync_recursive_changed).pack(anchor='w', pady=(0, 5))
+
+        # Info label
+        self.sync_info_label = ttk.Label(self.xml_sync_frame,
+                                         text="Single folder mode: Will process current directory only",
+                                         foreground='gray')
+        self.sync_info_label.pack(anchor='w', pady=(0, 10))
+
+        # Processing options
+        proc_options_frame = ttk.Frame(self.xml_sync_frame)
+        proc_options_frame.pack(fill='x')
+
+        ttk.Label(proc_options_frame, text="Max concurrent threads:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        self.sync_max_threads_var = tk.StringVar(value="4")
+        thread_spinbox = ttk.Spinbox(proc_options_frame, from_=1, to=min(8, cpu_count()),
+                                     textvariable=self.sync_max_threads_var, width=10)
+        thread_spinbox.grid(row=0, column=1, sticky=tk.W)
+        ttk.Label(proc_options_frame, text=f"(1-{min(8, cpu_count())} available)").grid(row=0, column=2, sticky=tk.W,
+                                                                                        padx=(10, 0))
+
+        # Sync button
+        sync_button_frame = ttk.Frame(main_frame)
+        sync_button_frame.pack(pady=(0, 20))
+
+        ttk.Button(sync_button_frame, text="Sync XML filename/path",
+                   command=self.start_xml_sync).pack(side='left', padx=5)
+        ttk.Button(sync_button_frame, text="Stop Sync",
+                   command=self.stop_xml_sync).pack(side='left', padx=5)
+
+        # Section 5: Outlier Detection - Side by Side Layout
         ttk.Label(main_frame, text="Outlier Detection Settings",
                   font=('TkDefaultFont', 12, 'bold')).pack(anchor='w', pady=(20, 10))
 
@@ -276,7 +303,7 @@ class DataCleaningTab:
         ttk.Button(outlier_button_frame, text="Move Outliers to Folder",
                    command=self.move_outliers).pack(side='left', padx=5)
 
-        # Section 4: Results
+        # Section 6: Results
         ttk.Label(main_frame, text="Results",
                   font=('TkDefaultFont', 12, 'bold')).pack(anchor='w', pady=(20, 10))
 
@@ -318,7 +345,7 @@ class DataCleaningTab:
         # Bind double-click to preview
         self.outlier_tree.bind('<Double-Button-1>', self.on_tree_double_click)
 
-        # Section 5: Progress
+        # Section 7: Progress
         ttk.Label(main_frame, text="Progress",
                   font=('TkDefaultFont', 12, 'bold')).pack(anchor='w', pady=(20, 10))
 
@@ -332,8 +359,10 @@ class DataCleaningTab:
         # Initialize
         self.cleaning_thread = None
         self.stop_flag = threading.Event()
+        self.sync_stop_flag = threading.Event()
         self.manager = None
         self.progress_dict = None
+        self.sync_thread = None
 
     def browse_source_dir(self):
         directory = filedialog.askdirectory(
@@ -1563,6 +1592,538 @@ class DataCleaningTab:
         if message:
             self.parent.after(0, lambda: self.status_label.config(text=message))
 
+    def sync_xml_filenames(self) -> None:
+        """
+        Synchronize XML filename and path fields with actual image files.
+        Process train, valid, and test folders if they exist.
+        """
+        try:
+            source_dir = self.source_dir_var.get()
+            if not source_dir:
+                self.log_queue.put("No source directory specified")
+                return
+
+            # Define folders to process
+            folders_to_process: List[str] = ['train', 'valid', 'test']
+
+            total_fixed = 0
+            total_skipped = 0
+
+            # Process each folder
+            for folder in folders_to_process:
+                folder_path = os.path.join(source_dir, folder)
+
+                # Check if folder exists
+                if not os.path.exists(folder_path):
+                    self.log_queue.put(f"Folder '{folder}' not found, checking root directory...")
+                    # If subfolder doesn't exist, try the root directory itself
+                    if folder == 'train' and os.path.exists(source_dir):
+                        # Process root directory if no subfolders exist
+                        folder_path = source_dir
+                        folder = os.path.basename(source_dir)
+                    else:
+                        continue
+
+                self.log_queue.put(f"\n🔍 Processing folder: {folder}")
+                result = self.sync_folder(folder_path)
+
+                total_fixed += result['fixed']
+                total_skipped += result['skipped']
+
+                self.log_queue.put(
+                    f"📁 Done with folder '{folder}': Fixed={result['fixed']}, Skipped={result['skipped']}"
+                )
+
+            # If no subfolders were found, process the root directory
+            if total_fixed == 0 and total_skipped == 0:
+                self.log_queue.put("\n🔍 No subfolders found, processing root directory")
+                result = self.sync_folder(source_dir)
+                total_fixed = result['fixed']
+                total_skipped = result['skipped']
+                self.log_queue.put(
+                    f"📁 Done with root directory: Fixed={result['fixed']}, Skipped={result['skipped']}"
+                )
+
+            self.log_queue.put(f"\n✅ XML filename sync completed: Fixed={total_fixed}, Skipped={total_skipped}")
+
+        except Exception as e:
+            self.log_queue.put(f"❌ Error during XML filename sync: {str(e)}")
+
+    def sync_folder(self, folder_path: str) -> Dict[str, int]:
+        """
+        Fix <filename> and <path> fields in XML files for a given folder.
+
+        Args:
+            folder_path: Path to the folder containing XML and image files
+
+        Returns:
+            Dictionary with 'fixed' and 'skipped' counts
+        """
+        try:
+            # Get all XML files in the folder
+            xml_files = glob.glob(os.path.join(folder_path, '*.xml'))
+
+            self.log_queue.put(f"Found {len(xml_files)} XML files in {os.path.basename(folder_path)}")
+
+            fixed = 0
+            skipped = 0
+
+            for idx, xml_path in enumerate(xml_files, start=1):
+                if self.stop_flag.is_set():
+                    break
+
+                # Get the base name without extension
+                base_name = os.path.splitext(os.path.basename(xml_path))[0]
+
+                # Find corresponding image file
+                img_filename = self._find_image_file(folder_path, base_name)
+
+                if not img_filename:
+                    self.log_queue.put(f"⚠️ No image found for {base_name}")
+                    skipped += 1
+                    continue
+
+                try:
+                    # Parse XML file
+                    tree = ET.parse(xml_path)
+                    root = tree.getroot()
+
+                    modified = False
+
+                    # Update <filename> element
+                    filename_elem = root.find('filename')
+                    if filename_elem is None:
+                        filename_elem = ET.SubElement(root, 'filename')
+                        modified = True
+
+                    old_filename = filename_elem.text
+                    if old_filename != img_filename:
+                        filename_elem.text = img_filename
+                        modified = True
+
+                    # Update <path> element
+                    path_elem = root.find('path')
+                    if path_elem is None:
+                        path_elem = ET.SubElement(root, 'path')
+                        modified = True
+
+                    # Create absolute path for the image
+                    new_path = os.path.abspath(os.path.join(folder_path, img_filename))
+                    old_path = path_elem.text
+
+                    if old_path != new_path:
+                        path_elem.text = new_path
+                        modified = True
+
+                    # Write back if modified
+                    if modified:
+                        # Write XML with proper formatting
+                        self._indent_xml(root)
+                        tree.write(xml_path, encoding='utf-8', xml_declaration=True)
+                        fixed += 1
+
+                        self.log_queue.put(
+                            f"✅ Fixed [{idx}/{len(xml_files)}]: {os.path.basename(xml_path)} "
+                            f"(filename: '{old_filename}' → '{img_filename}')"
+                        )
+
+                    # Update progress
+                    progress = (idx / len(xml_files)) * 100
+                    self._update_status(
+                        f"Processing XML files in {os.path.basename(folder_path)}: {idx}/{len(xml_files)}")
+
+                except ET.ParseError as e:
+                    self.log_queue.put(f"❌ Error parsing {xml_path}: {e}")
+                    skipped += 1
+                except Exception as e:
+                    self.log_queue.put(f"❌ Error fixing {xml_path}: {e}")
+                    skipped += 1
+
+            return {'fixed': fixed, 'skipped': skipped}
+
+        except Exception as e:
+            self.log_queue.put(f"❌ Error processing folder {folder_path}: {str(e)}")
+            return {'fixed': 0, 'skipped': 0}
+
+    def _find_image_file(self, directory: str, base_name: str) -> Optional[str]:
+        """
+        Find an image file with the given base name in the directory.
+
+        Args:
+            directory: Directory to search in
+            base_name: Base filename without extension
+
+        Returns:
+            Image filename with extension if found, None otherwise
+        """
+        # Check for various image extensions
+        image_extensions = ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']
+
+        for ext in image_extensions:
+            image_path = os.path.join(directory, base_name + ext)
+            if os.path.isfile(image_path):
+                return base_name + ext
+
+        return None
+
+    def _indent_xml(self, elem: ET.Element, level: int = 0) -> None:
+        """
+        Add pretty-printing indentation to XML elements.
+
+        Args:
+            elem: XML element to indent
+            level: Current indentation level
+        """
+        indent = "\n" + "    " * level
+        if len(elem):
+            if not elem.text or not elem.text.strip():
+                elem.text = indent + "    "
+            if not elem.tail or not elem.tail.strip():
+                elem.tail = indent
+            for child in elem:
+                self._indent_xml(child, level + 1)
+            if not child.tail or not child.tail.strip():
+                child.tail = indent
+        else:
+            if level and (not elem.tail or not elem.tail.strip()):
+                elem.tail = indent
+
+    def on_sync_recursive_changed(self) -> None:
+        """Update info label when recursive option changes"""
+        if self.sync_recursive_var.get():
+            self.sync_info_label.config(
+                text="Recursive mode: Will process all subfolders (each folder in separate thread)",
+                foreground='blue'
+            )
+        else:
+            self.sync_info_label.config(
+                text="Single folder mode: Will process current directory only",
+                foreground='gray'
+            )
+
+    def start_xml_sync(self) -> None:
+        """Start the XML sync operation with multiprocessing support"""
+        if not self.source_dir_var.get():
+            messagebox.showwarning("Warning", "Please select a source directory first.")
+            return
+
+        self.sync_stop_flag.clear()
+        self.sync_thread = threading.Thread(target=self._xml_sync_thread, daemon=True)
+        self.sync_thread.start()
+
+    def stop_xml_sync(self) -> None:
+        """Stop the XML sync operation"""
+        self.sync_stop_flag.set()
+        self.log_queue.put("Stopping XML sync process...")
+
+    def _xml_sync_thread(self) -> None:
+        """Main thread for XML sync with multiprocessing support"""
+        try:
+            source_dir = self.source_dir_var.get()
+            recursive = self.sync_recursive_var.get()
+            max_threads = int(self.sync_max_threads_var.get())
+
+            self.log_queue.put("\n=== Starting XML Filename/Path Sync ===")
+            self._update_status("Analyzing folders...")
+            self._update_progress(0)
+
+            if recursive:
+                # Find all folders with XML files
+                folders_to_process = self._find_folders_with_xml(source_dir)
+
+                if not folders_to_process:
+                    self.log_queue.put("No folders with XML files found.")
+                    self._update_status("No XML files found")
+                    return
+
+                self.log_queue.put(f"Found {len(folders_to_process)} folders to process")
+                self.log_queue.put(f"Using up to {max_threads} concurrent threads")
+
+                # Process folders concurrently
+                self._process_folders_concurrent(folders_to_process, max_threads)
+
+            else:
+                # Single folder processing
+                self.log_queue.put(f"Processing single folder: {os.path.basename(source_dir)}")
+
+                # Check if we need to split large folder
+                xml_files = glob.glob(os.path.join(source_dir, '*.xml'))
+
+                if len(xml_files) > 1500:
+                    self.log_queue.put(f"Large folder detected ({len(xml_files)} files), using parallel processing")
+                    self._process_large_folder_parallel(source_dir, xml_files)
+                else:
+                    result = self._sync_folder_with_progress(source_dir)
+                    self.log_queue.put(f"Completed: Fixed={result['fixed']}, Skipped={result['skipped']}")
+
+            if not self.sync_stop_flag.is_set():
+                self._update_status("XML sync completed!")
+                self.log_queue.put("\n✅ XML sync operation completed successfully!")
+            else:
+                self._update_status("XML sync stopped by user")
+                self.log_queue.put("\n⚠️ XML sync operation stopped by user")
+
+        except Exception as e:
+            self.log_queue.put(f"\n❌ Error during XML sync: {str(e)}")
+            self._update_status(f"Error: {str(e)}")
+
+    def _find_folders_with_xml(self, root_dir: str) -> List[str]:
+        """Find all folders containing XML files"""
+        folders = []
+
+        for dirpath, dirnames, filenames in os.walk(root_dir):
+            # Check if this directory has XML files
+            xml_files = [f for f in filenames if f.endswith('.xml')]
+            if xml_files:
+                folders.append(dirpath)
+
+        return folders
+
+    def _process_folders_concurrent(self, folders: List[str], max_threads: int) -> None:
+        """Process multiple folders concurrently using ThreadPoolExecutor"""
+        total_fixed = 0
+        total_skipped = 0
+        completed = 0
+        total = len(folders)
+
+        with ThreadPoolExecutor(max_workers=max_threads) as executor:
+            # Submit all folders for processing
+            future_to_folder = {}
+
+            for folder in folders:
+                if self.sync_stop_flag.is_set():
+                    break
+
+                future = executor.submit(self._sync_folder_with_progress, folder)
+                future_to_folder[future] = folder
+
+            # Process completed futures
+            for future in as_completed(future_to_folder):
+                if self.sync_stop_flag.is_set():
+                    executor.shutdown(wait=False)
+                    break
+
+                folder = future_to_folder[future]
+                folder_name = os.path.relpath(folder, self.source_dir_var.get())
+
+                try:
+                    result = future.result()
+                    total_fixed += result['fixed']
+                    total_skipped += result['skipped']
+                    completed += 1
+
+                    self.log_queue.put(
+                        f"[{completed}/{total}] Completed '{folder_name}': "
+                        f"Fixed={result['fixed']}, Skipped={result['skipped']}"
+                    )
+
+                    # Update progress
+                    progress = (completed / total) * 100
+                    self._update_progress(progress)
+                    self._update_status(f"Processing folders: {completed}/{total}")
+
+                except Exception as e:
+                    self.log_queue.put(f"❌ Error processing '{folder_name}': {str(e)}")
+                    completed += 1
+
+        self.log_queue.put(f"\n📊 Total results: Fixed={total_fixed}, Skipped={total_skipped}")
+
+    def _process_large_folder_parallel(self, folder_path: str, xml_files: List[str]) -> None:
+        """Process a large folder by splitting it into two parts and processing in parallel"""
+        # Split files into two halves
+        mid_point = len(xml_files) // 2
+        batch1 = xml_files[:mid_point]
+        batch2 = xml_files[mid_point:]
+
+        self.log_queue.put(f"Splitting {len(xml_files)} files into two batches: {len(batch1)} and {len(batch2)}")
+
+        total_fixed = 0
+        total_skipped = 0
+
+        # Process batches in parallel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(self._process_xml_batch, folder_path, batch1, 1)
+            future2 = executor.submit(self._process_xml_batch, folder_path, batch2, 2)
+
+            for future in as_completed([future1, future2]):
+                if self.sync_stop_flag.is_set():
+                    executor.shutdown(wait=False)
+                    break
+
+                try:
+                    result = future.result()
+                    total_fixed += result['fixed']
+                    total_skipped += result['skipped']
+
+                    batch_num = 1 if future == future1 else 2
+                    self.log_queue.put(
+                        f"Batch {batch_num} completed: Fixed={result['fixed']}, Skipped={result['skipped']}"
+                    )
+                except Exception as e:
+                    self.log_queue.put(f"❌ Error in batch processing: {str(e)}")
+
+        self.log_queue.put(f"📊 Folder totals: Fixed={total_fixed}, Skipped={total_skipped}")
+
+    def _process_xml_batch(self, folder_path: str, xml_files: List[str], batch_num: int) -> Dict[str, int]:
+        """Process a batch of XML files"""
+        fixed = 0
+        skipped = 0
+
+        for idx, xml_path in enumerate(xml_files, start=1):
+            if self.sync_stop_flag.is_set():
+                break
+
+            # Get the base name without extension
+            base_name = os.path.splitext(os.path.basename(xml_path))[0]
+
+            # Find corresponding image file
+            img_filename = self._find_image_file(folder_path, base_name)
+
+            if not img_filename:
+                skipped += 1
+                continue
+
+            try:
+                # Parse XML file
+                tree = ET.parse(xml_path)
+                root = tree.getroot()
+
+                modified = False
+
+                # Update <filename> element
+                filename_elem = root.find('filename')
+                if filename_elem is None:
+                    filename_elem = ET.SubElement(root, 'filename')
+                    modified = True
+
+                old_filename = filename_elem.text
+                if old_filename != img_filename:
+                    filename_elem.text = img_filename
+                    modified = True
+
+                # Update <path> element
+                path_elem = root.find('path')
+                if path_elem is None:
+                    path_elem = ET.SubElement(root, 'path')
+                    modified = True
+
+                # Create absolute path for the image
+                new_path = os.path.abspath(os.path.join(folder_path, img_filename))
+                old_path = path_elem.text
+
+                if old_path != new_path:
+                    path_elem.text = new_path
+                    modified = True
+
+                # Write back if modified
+                if modified:
+                    self._indent_xml(root)
+                    tree.write(xml_path, encoding='utf-8', xml_declaration=True)
+                    fixed += 1
+
+                    if idx % 100 == 0:  # Log progress every 100 files
+                        self.log_queue.put(f"Batch {batch_num}: Processed {idx}/{len(xml_files)} files")
+
+            except Exception as e:
+                skipped += 1
+
+        return {'fixed': fixed, 'skipped': skipped}
+
+    def _sync_folder_with_progress(self, folder_path: str) -> Dict[str, int]:
+        """Sync a folder with progress updates"""
+        try:
+            # Get all XML files in the folder
+            xml_files = glob.glob(os.path.join(folder_path, '*.xml'))
+
+            if not xml_files:
+                return {'fixed': 0, 'skipped': 0}
+
+            folder_name = os.path.relpath(folder_path,
+                                          self.source_dir_var.get()) if self.source_dir_var.get() else os.path.basename(
+                folder_path)
+            self.log_queue.put(f"Processing '{folder_name}' ({len(xml_files)} XML files)")
+
+            fixed = 0
+            skipped = 0
+
+            for idx, xml_path in enumerate(xml_files, start=1):
+                if self.sync_stop_flag.is_set():
+                    break
+
+                # Get the base name without extension
+                base_name = os.path.splitext(os.path.basename(xml_path))[0]
+
+                # Find corresponding image file
+                img_filename = self._find_image_file(folder_path, base_name)
+
+                if not img_filename:
+                    skipped += 1
+                    continue
+
+                try:
+                    # Parse XML file
+                    tree = ET.parse(xml_path)
+                    root = tree.getroot()
+
+                    modified = False
+
+                    # Update <filename> element
+                    filename_elem = root.find('filename')
+                    if filename_elem is None:
+                        filename_elem = ET.SubElement(root, 'filename')
+                        modified = True
+
+                    old_filename = filename_elem.text
+                    if old_filename != img_filename:
+                        filename_elem.text = img_filename
+                        modified = True
+
+                    # Update <path> element
+                    path_elem = root.find('path')
+                    if path_elem is None:
+                        path_elem = ET.SubElement(root, 'path')
+                        modified = True
+
+                    # Create absolute path for the image
+                    new_path = os.path.abspath(os.path.join(folder_path, img_filename))
+                    old_path = path_elem.text
+
+                    if old_path != new_path:
+                        path_elem.text = new_path
+                        modified = True
+
+                    # Write back if modified
+                    if modified:
+                        self._indent_xml(root)
+                        tree.write(xml_path, encoding='utf-8', xml_declaration=True)
+                        fixed += 1
+
+                except Exception as e:
+                    skipped += 1
+
+            return {'fixed': fixed, 'skipped': skipped}
+
+        except Exception as e:
+            self.log_queue.put(f"❌ Error processing folder {folder_path}: {str(e)}")
+            return {'fixed': 0, 'skipped': 0}
+
+# import os
+# import shutil
+# import threading
+# import tkinter as tk
+# import xml.etree.ElementTree as ET
+# from collections import defaultdict
+# from multiprocessing import Pool, cpu_count, Manager
+# from pathlib import Path
+# from tkinter import ttk, filedialog, messagebox
+# from typing import Dict, List, Optional, Tuple
+# import glob
+#
+# import cv2
+# import numpy as np
+# from PIL import Image, ImageTk
+#
+#
 # def _check_xml_issues(xml_files):
 #     issues = []
 #     for xml_path in xml_files:
@@ -1592,6 +2153,7 @@ class DataCleaningTab:
 #         self.current_outlier_index = 0
 #         self.preview_window = None
 #         self.canvas = None
+#         self.show_overlay_var = tk.BooleanVar(value=False)  # Default to no overlay
 #         self.setup_ui()
 #
 #     def setup_ui(self):
@@ -1631,6 +2193,10 @@ class DataCleaningTab:
 #         self.remove_orphans_var = tk.BooleanVar(value=True)
 #         ttk.Checkbutton(self.operations_frame, text="Remove orphaned files",
 #                         variable=self.remove_orphans_var).pack(anchor='w')
+#
+#         self.sync_xml_filenames_var = tk.BooleanVar(value=False)
+#         ttk.Checkbutton(self.operations_frame, text="Sync XML filename/path fields with actual images",
+#                         variable=self.sync_xml_filenames_var).pack(anchor='w')
 #
 #         # Basic cleaning buttons
 #         basic_button_frame = ttk.Frame(main_frame)
@@ -1866,51 +2432,6 @@ class DataCleaningTab:
 #         self.stop_flag = threading.Event()
 #         self.manager = None
 #         self.progress_dict = None
-#     def _bind_mousewheel(self):
-#         """Bind mouse wheel to canvas with proper platform handling"""
-#
-#         def _on_mousewheel(event):
-#             # Scroll only if the mouse is over the canvas
-#             widget = event.widget
-#             # Check if we're over the canvas or one of its children
-#             while widget:
-#                 if widget == self.canvas:
-#                     # Different platforms use different delta values
-#                     if event.delta:
-#                         # Windows and MacOS
-#                         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-#                     else:
-#                         # Linux
-#                         if event.num == 4:
-#                             self.canvas.yview_scroll(-1, "units")
-#                         elif event.num == 5:
-#                             self.canvas.yview_scroll(1, "units")
-#                     return "break"
-#                 try:
-#                     widget = widget.master
-#                 except:
-#                     break
-#
-#         # Bind for different platforms
-#         # Windows and MacOS
-#         self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
-#         # Linux
-#         self.canvas.bind_all("<Button-4>", _on_mousewheel)
-#         self.canvas.bind_all("<Button-5>", _on_mousewheel)
-#
-#         # Also bind to all child widgets
-#         def bind_to_mousewheel(widget):
-#             # Windows and MacOS
-#             widget.bind("<MouseWheel>", _on_mousewheel)
-#             # Linux
-#             widget.bind("<Button-4>", _on_mousewheel)
-#             widget.bind("<Button-5>", _on_mousewheel)
-#
-#             for child in widget.winfo_children():
-#                 bind_to_mousewheel(child)
-#
-#         # Apply bindings to all children
-#         bind_to_mousewheel(self.canvas)
 #
 #     def browse_source_dir(self):
 #         directory = filedialog.askdirectory(
@@ -2006,7 +2527,8 @@ class DataCleaningTab:
 #             total_operations = sum([
 #                 self.clean_xml_var.get(),
 #                 self.verify_pairs_var.get(),
-#                 self.remove_orphans_var.get()
+#                 self.remove_orphans_var.get(),
+#                 self.sync_xml_filenames_var.get()
 #             ])
 #
 #             if total_operations == 0:
@@ -2036,6 +2558,14 @@ class DataCleaningTab:
 #                 self.log_queue.put("\n=== Removing orphaned files ===")
 #                 self._update_status("Removing orphans...")
 #                 self._remove_orphans(source_dir)
+#                 current_op += 1
+#                 self._update_progress((current_op / total_operations) * 100)
+#
+#             # Sync XML filenames with actual images
+#             if self.sync_xml_filenames_var.get() and not self.stop_flag.is_set():
+#                 self.log_queue.put("\n=== Syncing XML filename/path fields ===")
+#                 self._update_status("Syncing XML filenames...")
+#                 self.sync_xml_filenames()
 #                 current_op += 1
 #                 self._update_progress((current_op / total_operations) * 100)
 #
@@ -2160,24 +2690,29 @@ class DataCleaningTab:
 #
 #         self.log_queue.put(f"Removed {removed_count} orphaned files")
 #
-#     # Multiprocessing worker functions (must be at module level for pickling)
+#     # Multiprocessing worker functions with progress tracking
 #     @staticmethod
 #     def process_bbox_batch(args):
-#         """Process a batch of images for bbox outliers"""
-#         file_batch, source_dir, params = args
+#         """Process a batch of images for bbox outliers with progress tracking"""
+#         file_batch, source_dir, params, progress_dict, batch_id = args
 #         results = []
 #
-#         for img_file in file_batch:
+#         for idx, img_file in enumerate(file_batch):
 #             img_path = os.path.join(source_dir, img_file)
 #             xml_path = os.path.join(source_dir, Path(img_file).stem + '.xml')
 #
 #             if not os.path.exists(xml_path):
+#                 # Update progress
+#                 if progress_dict is not None:
+#                     progress_dict[batch_id] = idx + 1
 #                 continue
 #
 #             try:
 #                 # Get image dimensions
 #                 img = cv2.imread(img_path)
 #                 if img is None:
+#                     if progress_dict is not None:
+#                         progress_dict[batch_id] = idx + 1
 #                     continue
 #
 #                 img_height, img_width = img.shape[:2]
@@ -2217,20 +2752,26 @@ class DataCleaningTab:
 #             except Exception as e:
 #                 pass
 #
+#             # Update progress
+#             if progress_dict is not None:
+#                 progress_dict[batch_id] = idx + 1
+#
 #         return results
 #
 #     @staticmethod
 #     def process_quality_batch(args):
-#         """Process a batch of images for quality outliers"""
-#         file_batch, source_dir, params = args
+#         """Process a batch of images for quality outliers with progress tracking"""
+#         file_batch, source_dir, params, progress_dict, batch_id = args
 #         results = []
 #
-#         for img_file in file_batch:
+#         for idx, img_file in enumerate(file_batch):
 #             img_path = os.path.join(source_dir, img_file)
 #             xml_path = os.path.join(source_dir, Path(img_file).stem + '.xml')
 #
 #             img = cv2.imread(img_path)
 #             if img is None:
+#                 if progress_dict is not None:
+#                     progress_dict[batch_id] = idx + 1
 #                 continue
 #
 #             # Convert to different color spaces
@@ -2238,12 +2779,11 @@ class DataCleaningTab:
 #             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 #
 #             # Calculate saturation properly - exclude black pixels (V=0)
-#             # as they always have S=0 regardless of actual color
 #             v_channel = hsv[:, :, 2]
 #             s_channel = hsv[:, :, 1]
 #
 #             # Only consider pixels with some brightness
-#             valid_pixels = v_channel > 10  # Threshold to exclude very dark pixels
+#             valid_pixels = v_channel > 10
 #             if np.any(valid_pixels):
 #                 mean_saturation = np.mean(s_channel[valid_pixels])
 #             else:
@@ -2261,6 +2801,10 @@ class DataCleaningTab:
 #             }
 #
 #             results.append(metrics)
+#
+#             # Update progress
+#             if progress_dict is not None:
+#                 progress_dict[batch_id] = idx + 1
 #
 #         return results
 #
@@ -2303,13 +2847,13 @@ class DataCleaningTab:
 #             # Process bounding box outliers
 #             if detection_type in ['bbox', 'both']:
 #                 self.log_queue.put("Analyzing bounding boxes...")
-#                 bbox_outliers = self._detect_bbox_outliers_mp(file_batches, num_threads)
+#                 bbox_outliers = self._detect_bbox_outliers_mp(file_batches, num_threads, total_files)
 #                 self._update_progress(50 if detection_type == 'both' else 100)
 #
 #             # Process quality outliers
 #             if detection_type in ['quality', 'both']:
 #                 self.log_queue.put("Analyzing image quality...")
-#                 quality_outliers = self._detect_quality_outliers_mp(file_batches, num_threads)
+#                 quality_outliers = self._detect_quality_outliers_mp(file_batches, num_threads, total_files)
 #                 self._update_progress(100)
 #
 #             # Combine outliers
@@ -2338,14 +2882,31 @@ class DataCleaningTab:
 #             self.log_queue.put(f"❌ Error during outlier detection: {str(e)}")
 #             self._update_status("Error during detection")
 #
-#     def _detect_bbox_outliers_mp(self, file_batches, num_threads):
-#         """Detect bounding box outliers using multiprocessing"""
-#         # Prepare arguments for workers
-#         args = [(batch, self.source_dir_var.get(), {}) for batch in file_batches]
+#     def _detect_bbox_outliers_mp(self, file_batches, num_threads, total_files):
+#         """Detect bounding box outliers using multiprocessing with progress tracking"""
+#         # Create shared progress dict
+#         manager = Manager()
+#         progress_dict = manager.dict()
 #
-#         # Process batches in parallel
+#         # Prepare arguments for workers
+#         args = []
+#         for batch_id, batch in enumerate(file_batches):
+#             progress_dict[batch_id] = 0
+#             args.append((batch, self.source_dir_var.get(), {}, progress_dict, batch_id))
+#
+#         # Process batches in parallel with progress monitoring
 #         with Pool(processes=num_threads) as pool:
-#             results = pool.map(DataCleaningTab.process_bbox_batch, args)
+#             result = pool.map_async(DataCleaningTab.process_bbox_batch, args)
+#
+#             # Monitor progress
+#             while not result.ready():
+#                 processed = sum(progress_dict.values())
+#                 progress_pct = (processed / total_files) * 100 if total_files > 0 else 0
+#                 self._update_status(f"Analyzing bounding boxes... {processed}/{total_files}")
+#                 self._update_progress(progress_pct * 0.5)  # First half of progress
+#                 result.wait(0.1)
+#
+#             results = result.get()
 #
 #         # Flatten results
 #         all_box_data = []
@@ -2432,14 +2993,31 @@ class DataCleaningTab:
 #
 #         return outliers
 #
-#     def _detect_quality_outliers_mp(self, file_batches, num_threads):
-#         """Detect image quality outliers using multiprocessing"""
-#         # Prepare arguments for workers
-#         args = [(batch, self.source_dir_var.get(), {}) for batch in file_batches]
+#     def _detect_quality_outliers_mp(self, file_batches, num_threads, total_files):
+#         """Detect image quality outliers using multiprocessing with progress tracking"""
+#         # Create shared progress dict
+#         manager = Manager()
+#         progress_dict = manager.dict()
 #
-#         # Process batches in parallel
+#         # Prepare arguments for workers
+#         args = []
+#         for batch_id, batch in enumerate(file_batches):
+#             progress_dict[batch_id] = 0
+#             args.append((batch, self.source_dir_var.get(), {}, progress_dict, batch_id))
+#
+#         # Process batches in parallel with progress monitoring
 #         with Pool(processes=num_threads) as pool:
-#             results = pool.map(DataCleaningTab.process_quality_batch, args)
+#             result = pool.map_async(DataCleaningTab.process_quality_batch, args)
+#
+#             # Monitor progress
+#             while not result.ready():
+#                 processed = sum(progress_dict.values())
+#                 progress_pct = (processed / total_files) * 100 if total_files > 0 else 0
+#                 self._update_status(f"Analyzing quality... {processed}/{total_files}")
+#                 self._update_progress(50 + (progress_pct * 0.5))  # Second half of progress
+#                 result.wait(0.1)
+#
+#             results = result.get()
 #
 #         # Flatten results
 #         all_metrics = []
@@ -2554,6 +3132,7 @@ class DataCleaningTab:
 #             return
 #
 #         self.current_outlier_index = 0
+#         self.initial_outlier_count = len(self.outliers)
 #         self.show_outlier_preview()
 #
 #     def show_outlier_preview(self):
@@ -2563,9 +3142,43 @@ class DataCleaningTab:
 #         outlier = self.outliers[self.current_outlier_index]
 #         img_path = os.path.join(self.source_dir_var.get(), outlier['file'])
 #
+#         # Update window title with counter
 #         self.preview_window = tk.Toplevel(self.parent)
 #         self.preview_window.title(
-#             f"Outlier Preview - {outlier['file']} ({self.current_outlier_index + 1}/{len(self.outliers)})")
+#             f"Outlier Preview [{self.current_outlier_index + 1}/{len(self.outliers)}] - {outlier['file']}")
+#
+#         # Create main paned window for split view
+#         main_paned = ttk.PanedWindow(self.preview_window, orient=tk.HORIZONTAL)
+#         main_paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+#
+#         # Add prominent counter at the top
+#         counter_frame = ttk.Frame(self.preview_window)
+#         counter_frame.pack(fill=tk.X, side=tk.TOP, before=main_paned, padx=10, pady=(5, 0))
+#
+#         # Large counter display
+#         counter_text = f"{self.current_outlier_index + 1} / {len(self.outliers)}"
+#         counter_label = ttk.Label(counter_frame, text=counter_text,
+#                                   font=('TkDefaultFont', 16, 'bold'))
+#         counter_label.pack(side=tk.LEFT)
+#
+#         # Progress percentage
+#         progress_pct = ((self.current_outlier_index + 1) / len(self.outliers)) * 100
+#         progress_text = f"({progress_pct:.1f}% complete)"
+#         ttk.Label(counter_frame, text=progress_text,
+#                   font=('TkDefaultFont', 10)).pack(side=tk.LEFT, padx=(10, 0))
+#
+#         # Visual progress bar
+#         progress_bar = ttk.Progressbar(counter_frame, mode='determinate',
+#                                        length=200, value=progress_pct)
+#         progress_bar.pack(side=tk.LEFT, padx=(20, 0))
+#
+#         # Left panel - Image
+#         left_frame = ttk.Frame(main_paned)
+#         main_paned.add(left_frame, weight=3)
+#
+#         # Right panel - Details
+#         right_frame = ttk.Frame(main_paned)
+#         main_paned.add(right_frame, weight=1)
 #
 #         # Load and display image
 #         img = cv2.imread(img_path)
@@ -2576,7 +3189,8 @@ class DataCleaningTab:
 #         # Create a copy for drawing
 #         display_img = img.copy()
 #
-#         # Draw ALL bounding boxes from the XML file
+#         # Only draw annotations if overlay is enabled
+#         bbox_data = []
 #         xml_path = outlier.get('xml_path')
 #         if xml_path and os.path.exists(xml_path):
 #             try:
@@ -2591,27 +3205,32 @@ class DataCleaningTab:
 #                         xmax = int(bbox.find('xmax').text)
 #                         ymax = int(bbox.find('ymax').text)
 #
-#                         # Check if this is the outlier box (for bbox outliers)
+#                         label = obj.find('name')
+#                         label_text = label.text if label is not None else "unknown"
+#
+#                         # Check if this is the outlier box
 #                         is_outlier_box = False
 #                         if outlier.get('category') == 'bbox':
 #                             if (xmin == outlier.get('xmin') and ymin == outlier.get('ymin') and
 #                                     xmax == outlier.get('xmax') and ymax == outlier.get('ymax')):
 #                                 is_outlier_box = True
 #
-#                         # Draw box with different color for outlier
-#                         color = (0, 0, 255) if is_outlier_box else (0, 255, 0)  # Red for outlier, green for normal
-#                         thickness = 3 if is_outlier_box else 2
+#                         bbox_data.append({
+#                             'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax,
+#                             'label': label_text, 'is_outlier': is_outlier_box
+#                         })
 #
-#                         cv2.rectangle(display_img, (xmin, ymin), (xmax, ymax), color, thickness)
+#                         if self.show_overlay_var.get():
+#                             # Draw box with different color for outlier
+#                             color = (0, 0, 255) if is_outlier_box else (0, 255, 0)
+#                             thickness = 3 if is_outlier_box else 2
 #
-#                         # Add label
-#                         label = obj.find('name')
-#                         if label is not None and label.text:
-#                             label_text = label.text
+#                             cv2.rectangle(display_img, (xmin, ymin), (xmax, ymax), color, thickness)
+#
+#                             # Add label
 #                             if is_outlier_box:
 #                                 label_text += " (OUTLIER)"
 #
-#                             # Calculate text position and background
 #                             font = cv2.FONT_HERSHEY_SIMPLEX
 #                             font_scale = 0.6
 #                             font_thickness = 2
@@ -2620,13 +3239,11 @@ class DataCleaningTab:
 #                             text_x = xmin
 #                             text_y = ymin - 5 if ymin > 20 else ymax + 20
 #
-#                             # Draw background rectangle for text
 #                             cv2.rectangle(display_img,
 #                                           (text_x, text_y - text_size[1] - 4),
 #                                           (text_x + text_size[0] + 4, text_y + 4),
 #                                           color, -1)
 #
-#                             # Draw text
 #                             cv2.putText(display_img, label_text,
 #                                         (text_x + 2, text_y),
 #                                         font, font_scale,
@@ -2634,32 +3251,6 @@ class DataCleaningTab:
 #
 #             except Exception as e:
 #                 self.log_queue.put(f"Error parsing XML for preview: {str(e)}")
-#
-#         # Add text overlay with issues
-#         y_offset = 30
-#         for issue_line in outlier['issues'].split(';'):
-#             issue_line = issue_line.strip()
-#             if issue_line:
-#                 # Add background for better readability
-#                 text_size = cv2.getTextSize(issue_line, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
-#                 cv2.rectangle(display_img, (10, y_offset - 20), (15 + text_size[0], y_offset + 5), (0, 0, 0), -1)
-#                 cv2.putText(display_img, issue_line, (10, y_offset),
-#                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-#                 y_offset += 30
-#
-#         # For quality outliers, show the metrics
-#         if outlier.get('category') == 'quality' and 'metrics' in outlier:
-#             metrics = outlier['metrics']
-#             y_pos = y_offset + 20
-#             for key, value in metrics.items():
-#                 if key not in ['file', 'xml_path']:
-#                     text = f"{key}: {value:.1f}"
-#                     # Add background
-#                     text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)[0]
-#                     cv2.rectangle(display_img, (10, y_pos - 15), (15 + text_size[0], y_pos + 5), (0, 0, 0), -1)
-#                     cv2.putText(display_img, text, (10, y_pos),
-#                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 1)
-#                     y_pos += 25
 #
 #         # Convert to RGB and resize for display
 #         img_rgb = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
@@ -2674,42 +3265,158 @@ class DataCleaningTab:
 #         pil_image = Image.fromarray(img_rgb)
 #         photo = ImageTk.PhotoImage(pil_image)
 #
-#         label = tk.Label(self.preview_window, image=photo)
-#         label.image = photo
-#         label.pack(padx=10, pady=10)
+#         img_label = tk.Label(left_frame, image=photo)
+#         img_label.image = photo
+#         img_label.pack(expand=True)
 #
-#         # Info frame
-#         info_frame = ttk.Frame(self.preview_window)
-#         info_frame.pack(fill='x', padx=10, pady=5)
+#         # Store for toggle function
+#         self.current_img_label = img_label
+#         self.current_img_original = img
+#         self.current_bbox_data = bbox_data
 #
-#         info_text = f"File {self.current_outlier_index + 1} of {len(self.outliers)}\n"
-#         info_text += f"Category: {outlier.get('category', 'unknown')}\n"
-#         info_text += f"Issues: {outlier['issues']}"
+#         # Right panel contents
+#         # Title and toggle
+#         title_frame = ttk.Frame(right_frame)
+#         title_frame.pack(fill=tk.X, padx=10, pady=(10, 5))
 #
-#         # Add XML file info
+#         ttk.Label(title_frame, text="Outlier Details",
+#                   font=('TkDefaultFont', 12, 'bold')).pack(side=tk.LEFT)
+#
+#         ttk.Checkbutton(title_frame, text="Overlay",
+#                         variable=self.show_overlay_var,
+#                         command=lambda: self.toggle_preview_overlay(outlier)).pack(side=tk.RIGHT)
+#
+#         ttk.Separator(right_frame, orient='horizontal').pack(fill=tk.X, padx=10, pady=5)
+#
+#         # Scrollable frame for details
+#         canvas = tk.Canvas(right_frame, highlightthickness=0, width=300)
+#         scrollbar = ttk.Scrollbar(right_frame, orient="vertical", command=canvas.yview)
+#         scrollable_frame = ttk.Frame(canvas)
+#
+#         scrollable_frame.bind(
+#             "<Configure>",
+#             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+#         )
+#
+#         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+#         canvas.configure(yscrollcommand=scrollbar.set)
+#
+#         canvas.pack(side="left", fill="both", expand=True, padx=(10, 0))
+#         scrollbar.pack(side="right", fill="y", padx=(0, 10))
+#
+#         # File info - Remove the duplicate counter from here since we have it at the top
+#         info_frame = ttk.LabelFrame(scrollable_frame, text="File Information", padding=10)
+#         info_frame.pack(fill=tk.X, padx=10, pady=10)
+#
+#         ttk.Label(info_frame, text=f"File: {outlier['file']}", wraplength=250).pack(anchor=tk.W)
+#         ttk.Label(info_frame, text=f"Category: {outlier.get('category', 'unknown')}").pack(anchor=tk.W)
+#
 #         if xml_path and os.path.exists(xml_path):
-#             info_text += f"\nXML: {os.path.basename(xml_path)}"
+#             ttk.Label(info_frame, text=f"XML: {os.path.basename(xml_path)}", wraplength=250).pack(anchor=tk.W)
 #         else:
-#             info_text += "\nXML: Not found"
+#             ttk.Label(info_frame, text="XML: Not found", foreground='red').pack(anchor=tk.W)
 #
-#         ttk.Label(info_frame, text=info_text, justify=tk.LEFT).pack()
+#         # Issues
+#         issues_frame = ttk.LabelFrame(scrollable_frame, text="Issues Found", padding=10)
+#         issues_frame.pack(fill=tk.X, padx=10, pady=10)
 #
-#         # Keyboard shortcuts info
-#         shortcuts_frame = ttk.LabelFrame(self.preview_window, text="Keyboard Shortcuts", padding="5")
-#         shortcuts_frame.pack(fill='x', padx=10, pady=5)
+#         for issue in outlier['issues'].split(';'):
+#             issue = issue.strip()
+#             if issue:
+#                 issue_label = ttk.Label(issues_frame, text=f"• {issue}", wraplength=250, foreground='red')
+#                 issue_label.pack(anchor=tk.W, pady=2)
 #
-#         shortcuts_text = "← or A: Previous | → or D: Next | Delete or X: Delete files | Esc or Q: Close"
-#         ttk.Label(shortcuts_frame, text=shortcuts_text, justify=tk.CENTER).pack()
+#         # Bounding boxes details
+#         if bbox_data:
+#             bbox_frame = ttk.LabelFrame(scrollable_frame, text="Bounding Boxes", padding=10)
+#             bbox_frame.pack(fill=tk.X, padx=10, pady=10)
+#
+#             for idx, bbox in enumerate(bbox_data, 1):
+#                 box_subframe = ttk.Frame(bbox_frame)
+#                 box_subframe.pack(fill=tk.X, pady=5)
+#
+#                 box_title = f"Box {idx}: {bbox['label']}"
+#                 if bbox['is_outlier']:
+#                     box_title += " (OUTLIER)"
+#
+#                 ttk.Label(box_subframe, text=box_title,
+#                           font=('TkDefaultFont', 9, 'bold'),
+#                           foreground='red' if bbox['is_outlier'] else 'black').pack(anchor=tk.W)
+#
+#                 ttk.Label(box_subframe,
+#                           text=f"  Position: ({bbox['xmin']}, {bbox['ymin']}) → ({bbox['xmax']}, {bbox['ymax']})",
+#                           font=('Consolas', 8)).pack(anchor=tk.W)
+#
+#                 width = bbox['xmax'] - bbox['xmin']
+#                 height = bbox['ymax'] - bbox['ymin']
+#                 ttk.Label(box_subframe, text=f"  Size: {width} × {height} px",
+#                           font=('Consolas', 8)).pack(anchor=tk.W)
+#
+#         # Quality metrics
+#         if outlier.get('category') == 'quality' and 'metrics' in outlier:
+#             metrics_frame = ttk.LabelFrame(scrollable_frame, text="Quality Metrics", padding=10)
+#             metrics_frame.pack(fill=tk.X, padx=10, pady=10)
+#
+#             metrics = outlier['metrics']
+#             for key, value in metrics.items():
+#                 if key not in ['file', 'xml_path']:
+#                     ttk.Label(metrics_frame, text=f"{key}:", font=('TkDefaultFont', 9, 'bold')).pack(anchor=tk.W)
+#                     ttk.Label(metrics_frame, text=f"  {value:.2f}", font=('Consolas', 9)).pack(anchor=tk.W)
+#
+#         # Bottom controls frame
+#         bottom_frame = ttk.Frame(self.preview_window)
+#         bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=10)
+#
+#         # Quick stats
+#         stats_frame = ttk.Frame(bottom_frame)
+#         stats_frame.pack(fill=tk.X, pady=(0, 5))
+#
+#         # Calculate how many have been processed (deleted)
+#         processed = len(self.outliers) - len([o for o in self.outliers if o])  # This needs adjustment
+#         remaining_text = f"Remaining outliers: {len(self.outliers)} | "
+#         if hasattr(self, 'initial_outlier_count'):
+#             processed = self.initial_outlier_count - len(self.outliers)
+#             remaining_text += f"Processed: {processed} | "
+#
+#         ttk.Label(stats_frame, text=remaining_text, font=('TkDefaultFont', 9)).pack(side=tk.LEFT)
+#
+#         # Improved keyboard shortcuts display
+#         shortcuts_frame = ttk.LabelFrame(bottom_frame, text="Keyboard Shortcuts", padding="10")
+#         shortcuts_frame.pack(fill=tk.X, pady=(0, 5))
+#
+#         shortcuts = [
+#             ("Navigate:", "← → or A D", "Previous/Next image"),
+#             ("Actions:", "Delete or X", "Delete image + XML"),
+#             ("Display:", "O", "Toggle overlay on/off"),
+#             ("Close:", "Esc or Q", "Close preview window")
+#         ]
+#
+#         for i, (category, keys, description) in enumerate(shortcuts):
+#             row_frame = ttk.Frame(shortcuts_frame)
+#             row_frame.pack(fill=tk.X, pady=2)
+#
+#             ttk.Label(row_frame, text=category, font=('TkDefaultFont', 9, 'bold'),
+#                       width=12).pack(side=tk.LEFT)
+#             ttk.Label(row_frame, text=keys, font=('Consolas', 9),
+#                       foreground='darkblue', width=18).pack(side=tk.LEFT)
+#             ttk.Label(row_frame, text=description, font=('TkDefaultFont', 9)).pack(side=tk.LEFT)
 #
 #         # Legend
-#         legend_frame = ttk.LabelFrame(self.preview_window, text="Legend", padding="5")
-#         legend_frame.pack(fill='x', padx=10, pady=5)
+#         legend_frame = ttk.Frame(bottom_frame)
+#         legend_frame.pack(fill=tk.X)
 #
-#         legend_text = "Green boxes: Normal | Red boxes: Outlier | Yellow text: Issues"
-#         if outlier.get('category') == 'quality':
-#             legend_text += " | Yellow metrics: Quality measurements"
+#         legend_items = [
+#             ("●", "green", "Normal box"),
+#             ("●", "red", "Outlier box")
+#         ]
 #
-#         ttk.Label(legend_frame, text=legend_text, justify=tk.CENTER).pack()
+#         for symbol, color, text in legend_items:
+#             item_frame = ttk.Frame(legend_frame)
+#             item_frame.pack(side=tk.LEFT, padx=10)
+#
+#             tk.Label(item_frame, text=symbol, font=('TkDefaultFont', 16),
+#                      foreground=color).pack(side=tk.LEFT)
+#             ttk.Label(item_frame, text=text, font=('TkDefaultFont', 9)).pack(side=tk.LEFT, padx=5)
 #
 #         # Enhanced keyboard bindings
 #         self.preview_window.bind('<Left>', lambda e: self.prev_outlier())
@@ -2724,18 +3431,83 @@ class DataCleaningTab:
 #         self.preview_window.bind('<Escape>', lambda e: self.preview_window.destroy())
 #         self.preview_window.bind('<q>', lambda e: self.preview_window.destroy())
 #         self.preview_window.bind('<Q>', lambda e: self.preview_window.destroy())
+#         self.preview_window.bind('<o>', lambda e: self.toggle_overlay_key(outlier))
+#         self.preview_window.bind('<O>', lambda e: self.toggle_overlay_key(outlier))
 #
-#         # Focus window to ensure keyboard events work immediately
+#         # Focus window
 #         self.preview_window.focus_force()
-#         self.preview_window.grab_set()  # Make window modal to ensure all keyboard events go to it
+#         self.preview_window.grab_set()
+#
+#         # Update main window status
+#         self._update_status(f"Previewing outlier {self.current_outlier_index + 1} of {len(self.outliers)}")
+#
+#     def toggle_overlay_key(self, outlier):
+#         """Toggle overlay via keyboard"""
+#         self.show_overlay_var.set(not self.show_overlay_var.get())
+#         self.toggle_preview_overlay(outlier)
+#
+#     def toggle_preview_overlay(self, outlier):
+#         """Redraw the image with or without overlay"""
+#         img_path = os.path.join(self.source_dir_var.get(), outlier['file'])
+#         img = cv2.imread(img_path)
+#         if img is None:
+#             return
+#
+#         display_img = img.copy()
+#
+#         # Redraw boxes if overlay is enabled
+#         if self.show_overlay_var.get():
+#             for bbox in self.current_bbox_data:
+#                 color = (0, 0, 255) if bbox['is_outlier'] else (0, 255, 0)
+#                 thickness = 3 if bbox['is_outlier'] else 2
+#
+#                 cv2.rectangle(display_img,
+#                               (bbox['xmin'], bbox['ymin']),
+#                               (bbox['xmax'], bbox['ymax']),
+#                               color, thickness)
+#
+#                 label_text = bbox['label']
+#                 if bbox['is_outlier']:
+#                     label_text += " (OUTLIER)"
+#
+#                 font = cv2.FONT_HERSHEY_SIMPLEX
+#                 font_scale = 0.6
+#                 font_thickness = 2
+#                 text_size = cv2.getTextSize(label_text, font, font_scale, font_thickness)[0]
+#
+#                 text_x = bbox['xmin']
+#                 text_y = bbox['ymin'] - 5 if bbox['ymin'] > 20 else bbox['ymax'] + 20
+#
+#                 cv2.rectangle(display_img,
+#                               (text_x, text_y - text_size[1] - 4),
+#                               (text_x + text_size[0] + 4, text_y + 4),
+#                               color, -1)
+#
+#                 cv2.putText(display_img, label_text,
+#                             (text_x + 2, text_y),
+#                             font, font_scale,
+#                             (255, 255, 255), font_thickness)
+#
+#         # Update display
+#         img_rgb = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
+#         h, w = img_rgb.shape[:2]
+#         max_size = 800
+#         if w > max_size or h > max_size:
+#             scale = min(max_size / w, max_size / h)
+#             new_w, new_h = int(w * scale), int(h * scale)
+#             img_rgb = cv2.resize(img_rgb, (new_w, new_h))
+#
+#         pil_image = Image.fromarray(img_rgb)
+#         photo = ImageTk.PhotoImage(pil_image)
+#
+#         self.current_img_label.configure(image=photo)
+#         self.current_img_label.image = photo
 #
 #     def delete_outlier_quick(self, outlier):
 #         """Delete both image and XML files without confirmation for speed"""
-#         # Get file paths
 #         img_path = os.path.join(self.source_dir_var.get(), outlier['file'])
 #         xml_path = outlier.get('xml_path')
 #
-#         # If xml_path is not in outlier data, construct it
 #         if not xml_path:
 #             xml_path = os.path.join(self.source_dir_var.get(), Path(outlier['file']).stem + '.xml')
 #
@@ -2743,7 +3515,6 @@ class DataCleaningTab:
 #             deleted_files = []
 #             errors = []
 #
-#             # Delete image file
 #             if os.path.exists(img_path):
 #                 try:
 #                     os.remove(img_path)
@@ -2751,7 +3522,6 @@ class DataCleaningTab:
 #                 except Exception as e:
 #                     errors.append(f"Image: {str(e)}")
 #
-#             # Delete XML file
 #             if os.path.exists(xml_path):
 #                 try:
 #                     os.remove(xml_path)
@@ -2759,22 +3529,16 @@ class DataCleaningTab:
 #                 except Exception as e:
 #                     errors.append(f"XML: {str(e)}")
 #
-#             # Log results quickly
 #             if deleted_files:
 #                 self.log_queue.put(f"Deleted: {outlier['file']} + XML")
 #
 #             if errors:
 #                 self.log_queue.put(f"Error deleting {outlier['file']}: {'; '.join(errors)}")
 #             else:
-#                 # Remove from outliers list only if deletion was successful
 #                 self.outliers.remove(outlier)
-#
-#                 # Update the outlier list in UI
 #                 self.update_outlier_results()
 #
-#                 # Auto-advance to next image
 #                 if self.outliers:
-#                     # Keep same index if possible, otherwise go to previous
 #                     if self.current_outlier_index >= len(self.outliers):
 #                         self.current_outlier_index = len(self.outliers) - 1
 #                     self.show_outlier_preview()
@@ -2792,7 +3556,6 @@ class DataCleaningTab:
 #             self.current_outlier_index -= 1
 #             self.show_outlier_preview()
 #         else:
-#             # Optional: wrap around to last image
 #             self.current_outlier_index = len(self.outliers) - 1
 #             self.show_outlier_preview()
 #
@@ -2802,7 +3565,6 @@ class DataCleaningTab:
 #             self.current_outlier_index += 1
 #             self.show_outlier_preview()
 #         else:
-#             # Optional: wrap around to first image
 #             self.current_outlier_index = 0
 #             self.show_outlier_preview()
 #
@@ -2826,7 +3588,6 @@ class DataCleaningTab:
 #
 #             self.log_queue.put(f"Moved to outlier folder: {outlier['file']}")
 #
-#             # Remove from list and update display
 #             self.outliers.remove(outlier)
 #             if self.outliers:
 #                 if self.current_outlier_index >= len(self.outliers):
@@ -2858,8 +3619,8 @@ class DataCleaningTab:
 #             errors = 0
 #
 #             for i, outlier in enumerate(self.outliers):
-#                 self._update_progress((i / len(self.outliers)) * 100,
-#                                       f"Moving file {i + 1}/{len(self.outliers)}")
+#                 self._update_progress((i / len(self.outliers)) * 100)
+#                 self._update_status(f"Moving file {i + 1}/{len(self.outliers)}")
 #
 #                 try:
 #                     img_path = os.path.join(self.source_dir_var.get(), outlier['file'])
@@ -2877,12 +3638,12 @@ class DataCleaningTab:
 #                     errors += 1
 #
 #             self._update_status(f"Moved {moved} files to outlier folder. Errors: {errors}")
+#             self._update_progress(100)
 #             self.log_queue.put(f"\n✅ Moved {moved} outlier files to: {outlier_dir}")
 #
 #             if errors > 0:
 #                 self.log_queue.put(f"⚠️ Failed to move {errors} files")
 #
-#             # Clear outliers list after moving
 #             self.outliers = []
 #             self.update_outlier_results()
 #
@@ -2895,7 +3656,6 @@ class DataCleaningTab:
 #             item = self.outlier_tree.item(selection[0])
 #             filename = item['values'][0]
 #
-#             # Find the outlier in our list
 #             for i, outlier in enumerate(self.outliers):
 #                 if outlier['file'] == filename:
 #                     self.current_outlier_index = i
@@ -2909,3 +3669,200 @@ class DataCleaningTab:
 #         self.parent.after(0, lambda: self.progress_var.set(value))
 #         if message:
 #             self.parent.after(0, lambda: self.status_label.config(text=message))
+#
+#     def sync_xml_filenames(self) -> None:
+#         """
+#         Synchronize XML filename and path fields with actual image files.
+#         Process train, valid, and test folders if they exist.
+#         """
+#         try:
+#             source_dir = self.source_dir_var.get()
+#             if not source_dir:
+#                 self.log_queue.put("No source directory specified")
+#                 return
+#
+#             # Define folders to process
+#             folders_to_process: List[str] = ['train', 'valid', 'test']
+#
+#             total_fixed = 0
+#             total_skipped = 0
+#
+#             # Process each folder
+#             for folder in folders_to_process:
+#                 folder_path = os.path.join(source_dir, folder)
+#
+#                 # Check if folder exists
+#                 if not os.path.exists(folder_path):
+#                     self.log_queue.put(f"Folder '{folder}' not found, checking root directory...")
+#                     # If subfolder doesn't exist, try the root directory itself
+#                     if folder == 'train' and os.path.exists(source_dir):
+#                         # Process root directory if no subfolders exist
+#                         folder_path = source_dir
+#                         folder = os.path.basename(source_dir)
+#                     else:
+#                         continue
+#
+#                 self.log_queue.put(f"\n🔍 Processing folder: {folder}")
+#                 result = self.sync_folder(folder_path)
+#
+#                 total_fixed += result['fixed']
+#                 total_skipped += result['skipped']
+#
+#                 self.log_queue.put(
+#                     f"📁 Done with folder '{folder}': Fixed={result['fixed']}, Skipped={result['skipped']}"
+#                 )
+#
+#             # If no subfolders were found, process the root directory
+#             if total_fixed == 0 and total_skipped == 0:
+#                 self.log_queue.put("\n🔍 No subfolders found, processing root directory")
+#                 result = self.sync_folder(source_dir)
+#                 total_fixed = result['fixed']
+#                 total_skipped = result['skipped']
+#                 self.log_queue.put(
+#                     f"📁 Done with root directory: Fixed={result['fixed']}, Skipped={result['skipped']}"
+#                 )
+#
+#             self.log_queue.put(f"\n✅ XML filename sync completed: Fixed={total_fixed}, Skipped={total_skipped}")
+#
+#         except Exception as e:
+#             self.log_queue.put(f"❌ Error during XML filename sync: {str(e)}")
+#
+#     def sync_folder(self, folder_path: str) -> Dict[str, int]:
+#         """
+#         Fix <filename> and <path> fields in XML files for a given folder.
+#
+#         Args:
+#             folder_path: Path to the folder containing XML and image files
+#
+#         Returns:
+#             Dictionary with 'fixed' and 'skipped' counts
+#         """
+#         try:
+#             # Get all XML files in the folder
+#             xml_files = glob.glob(os.path.join(folder_path, '*.xml'))
+#
+#             self.log_queue.put(f"Found {len(xml_files)} XML files in {os.path.basename(folder_path)}")
+#
+#             fixed = 0
+#             skipped = 0
+#
+#             for idx, xml_path in enumerate(xml_files, start=1):
+#                 if self.stop_flag.is_set():
+#                     break
+#
+#                 # Get the base name without extension
+#                 base_name = os.path.splitext(os.path.basename(xml_path))[0]
+#
+#                 # Find corresponding image file
+#                 img_filename = self._find_image_file(folder_path, base_name)
+#
+#                 if not img_filename:
+#                     self.log_queue.put(f"⚠️ No image found for {base_name}")
+#                     skipped += 1
+#                     continue
+#
+#                 try:
+#                     # Parse XML file
+#                     tree = ET.parse(xml_path)
+#                     root = tree.getroot()
+#
+#                     modified = False
+#
+#                     # Update <filename> element
+#                     filename_elem = root.find('filename')
+#                     if filename_elem is None:
+#                         filename_elem = ET.SubElement(root, 'filename')
+#                         modified = True
+#
+#                     old_filename = filename_elem.text
+#                     if old_filename != img_filename:
+#                         filename_elem.text = img_filename
+#                         modified = True
+#
+#                     # Update <path> element
+#                     path_elem = root.find('path')
+#                     if path_elem is None:
+#                         path_elem = ET.SubElement(root, 'path')
+#                         modified = True
+#
+#                     # Create absolute path for the image
+#                     new_path = os.path.abspath(os.path.join(folder_path, img_filename))
+#                     old_path = path_elem.text
+#
+#                     if old_path != new_path:
+#                         path_elem.text = new_path
+#                         modified = True
+#
+#                     # Write back if modified
+#                     if modified:
+#                         # Write XML with proper formatting
+#                         self._indent_xml(root)
+#                         tree.write(xml_path, encoding='utf-8', xml_declaration=True)
+#                         fixed += 1
+#
+#                         self.log_queue.put(
+#                             f"✅ Fixed [{idx}/{len(xml_files)}]: {os.path.basename(xml_path)} "
+#                             f"(filename: '{old_filename}' → '{img_filename}')"
+#                         )
+#
+#                     # Update progress
+#                     progress = (idx / len(xml_files)) * 100
+#                     self._update_status(
+#                         f"Processing XML files in {os.path.basename(folder_path)}: {idx}/{len(xml_files)}")
+#
+#                 except ET.ParseError as e:
+#                     self.log_queue.put(f"❌ Error parsing {xml_path}: {e}")
+#                     skipped += 1
+#                 except Exception as e:
+#                     self.log_queue.put(f"❌ Error fixing {xml_path}: {e}")
+#                     skipped += 1
+#
+#             return {'fixed': fixed, 'skipped': skipped}
+#
+#         except Exception as e:
+#             self.log_queue.put(f"❌ Error processing folder {folder_path}: {str(e)}")
+#             return {'fixed': 0, 'skipped': 0}
+#
+#     def _find_image_file(self, directory: str, base_name: str) -> Optional[str]:
+#         """
+#         Find an image file with the given base name in the directory.
+#
+#         Args:
+#             directory: Directory to search in
+#             base_name: Base filename without extension
+#
+#         Returns:
+#             Image filename with extension if found, None otherwise
+#         """
+#         # Check for various image extensions
+#         image_extensions = ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']
+#
+#         for ext in image_extensions:
+#             image_path = os.path.join(directory, base_name + ext)
+#             if os.path.isfile(image_path):
+#                 return base_name + ext
+#
+#         return None
+#
+#     def _indent_xml(self, elem: ET.Element, level: int = 0) -> None:
+#         """
+#         Add pretty-printing indentation to XML elements.
+#
+#         Args:
+#             elem: XML element to indent
+#             level: Current indentation level
+#         """
+#         indent = "\n" + "    " * level
+#         if len(elem):
+#             if not elem.text or not elem.text.strip():
+#                 elem.text = indent + "    "
+#             if not elem.tail or not elem.tail.strip():
+#                 elem.tail = indent
+#             for child in elem:
+#                 self._indent_xml(child, level + 1)
+#             if not child.tail or not child.tail.strip():
+#                 child.tail = indent
+#         else:
+#             if level and (not elem.tail or not elem.tail.strip()):
+#                 elem.tail = indent
+#

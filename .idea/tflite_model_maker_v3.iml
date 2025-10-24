@@ -3,6 +3,20 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/saved_model/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/saved_model/assets" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

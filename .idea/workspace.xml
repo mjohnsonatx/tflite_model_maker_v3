@@ -5,67 +5,57 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4a3f7e06-2b93-4814-a679-5d7e51324022" name="Changes" comment="added new models to VCS">
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/efficientdet_lite0_whole_BB.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_16-41-47/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/efficientdet_lite0_whole_BB.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-17_22-34-55/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/efficientdet_lite0_whole_BB.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_01-26-28/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/efficientdet_lite0_whole_BB.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_09-46-43/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/efficientdet_lite0_whole_BB.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_15-21-00/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/__BARBELL_efficientdet_lite0_whole.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/barbell_models/efficientdet_lite0_2025-10-18_20-04-47/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/efficientdet_lite0_whole.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-18-49/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/efficientdet_lite0_whole.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/saved_model/variables/variables.index" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/training_log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-09_18-35-35/training_specs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/efficientdet_lite0_whole.tflite" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/saved_model/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/saved_model/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/saved_model/variables/variables.index" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/analysis/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/analysis/statistics.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/core/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/parsers/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/parsers/log_parser.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/parsers/spec_parser.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/ui/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/visualization/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/training_visualizer/visualization/plots.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/tflite_model_maker_v3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/tflite_model_maker_v3.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/training_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-10_14-43-51/training_specs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_01-59-59/training_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_01-59-59/training_specs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/efficientdet_lite0_whole.tflite" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/labels.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/saved_model/saved_model.pb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/saved_model/variables/variables.data-00000-of-00001" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/saved_model/variables/variables.index" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/training_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-14_11-34-55/training_specs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/efficientdet_lite0_whole.tflite" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/labels.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/saved_model/saved_model.pb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/saved_model/variables/variables.data-00000-of-00001" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/saved_model/variables/variables.index" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/training_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-15_23-00-58/training_specs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/efficientdet_lite0_whole.tflite" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/labels.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/saved_model/saved_model.pb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/saved_model/variables/variables.data-00000-of-00001" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/saved_model/variables/variables.index" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/training_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-16_19-38-19/training_specs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/efficientdet_lite0_whole.tflite" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/labels.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/saved_model/saved_model.pb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/saved_model/variables/variables.data-00000-of-00001" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/saved_model/variables/variables.index" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/training_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_01-59-54/training_specs.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/efficientdet_lite0_whole.tflite" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/labels.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/saved_model/saved_model.pb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/saved_model/variables/variables.data-00000-of-00001" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/saved_model/variables/variables.index" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/training_log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/kettlebell_models/efficientdet_lite0_2025-10-17_08-32-00/training_specs.txt" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -127,14 +117,23 @@
     &quot;Python.SimpleAnnotator.executor&quot;: &quot;Run&quot;,
     &quot;Python.SplitData.executor&quot;: &quot;Run&quot;,
     &quot;Python.SplitFolder.executor&quot;: &quot;Run&quot;,
+    &quot;Python.__main__.executor&quot;: &quot;Run&quot;,
     &quot;Python._auto_visualize.executor&quot;: &quot;Run&quot;,
+    &quot;Python.boundingBoxAnalyzer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.comparison_plots.executor&quot;: &quot;Run&quot;,
+    &quot;Python.export_to_pdf.executor&quot;: &quot;Run&quot;,
     &quot;Python.gpu_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.inference.executor&quot;: &quot;Run&quot;,
+    &quot;Python.iou_sweep_gpu.executor&quot;: &quot;Run&quot;,
     &quot;Python.main.executor&quot;: &quot;Run&quot;,
     &quot;Python.name_cleaning.executor&quot;: &quot;Run&quot;,
     &quot;Python.requirements.executor&quot;: &quot;Run&quot;,
+    &quot;Python.run_visualizer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.save_visualizer_pdf.executor&quot;: &quot;Run&quot;,
     &quot;Python.scratch_5.executor&quot;: &quot;Run&quot;,
     &quot;Python.scratch_7.executor&quot;: &quot;Run&quot;,
+    &quot;Python.sweep_runtime_thresholds.executor&quot;: &quot;Run&quot;,
+    &quot;Python.training_visualizer.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
@@ -143,6 +142,11 @@
     &quot;settings.editor.selected.configurable&quot;: &quot;terminal&quot;
   },
   &quot;keyToStringList&quot;: {
+    &quot;GitStage.ChangesTree.GroupingKeys&quot;: [
+      &quot;directory&quot;,
+      &quot;module&quot;,
+      &quot;repository&quot;
+    ],
     &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
       &quot;Python&quot;
     ]
@@ -165,14 +169,14 @@
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\test_data\valid" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3" />
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\kb_data_10_9_25\kb_swing_front_annotated" />
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\sliced_kb_videos_into_frames\completed_annotations" />
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\NEW DATA SPLIT\valid with zoom out" />
       <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\NEW DATA SPLIT\test with zoom out" />
-      <recent name="C:\Users\mjohn\PycharmProjects\tflite_model_maker_v3\NEW DATA SPLIT\train with zoom out" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.requirements">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="tflite_model_maker_v3" />
       <option name="ENV_FILES" value="" />
@@ -438,10 +442,35 @@
       <option name="project" value="LOCAL" />
       <updated>1760898109834</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="added new models to VCS">
+      <option name="closed" value="true" />
+      <created>1760898597738</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1760898597738</updated>
+    </task>
+    <task id="LOCAL-00025" summary="began refactoring PlotTrainingMetrics">
+      <option name="closed" value="true" />
+      <created>1760899846439</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1760899846439</updated>
+    </task>
+    <task id="LOCAL-00026" summary="done refactoring plot training metrics. need to work on pdf creator">
+      <option name="closed" value="true" />
+      <created>1760908422931</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1760908422931</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="CHECK_NEW_TODO" value="false" />
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="added some quantization" />
     <MESSAGE value="more models, more sample data" />
@@ -461,6 +490,8 @@
     <MESSAGE value="lots of changes, added data visualization, training metrics logging and a new folder system for saving the training results." />
     <MESSAGE value="deleted lots of training data" />
     <MESSAGE value="added new models to VCS" />
-    <option name="LAST_COMMIT_MESSAGE" value="added new models to VCS" />
+    <MESSAGE value="began refactoring PlotTrainingMetrics" />
+    <MESSAGE value="done refactoring plot training metrics. need to work on pdf creator" />
+    <option name="LAST_COMMIT_MESSAGE" value="done refactoring plot training metrics. need to work on pdf creator" />
   </component>
 </project>
