@@ -9,6 +9,7 @@ from FileOperationsTab import FileOperationsTab
 from FrameExtractionGui import FrameExtractionTab
 from PreviewValidateTab import PreviewValidateTab
 from TrainingTab import TrainingTab
+from VisualizerTab import VisualizerTab
 
 
 class TFLiteModelMakerGUI:
@@ -19,6 +20,13 @@ class TFLiteModelMakerGUI:
         # Setup logging
         self.log_queue = queue.Queue()
         self.log_entry_count = 0
+        # Collapsible log panel state
+        self.log_panel_visible = True
+        self.log_panel_height = 200
+        self.collapsed_height = 35
+        self.maximized_log = False
+        self.previous_sash_pos = None
+
         self.setup_ui()
         self.process_log_queue()
 
@@ -80,6 +88,7 @@ class TFLiteModelMakerGUI:
         self.preview_validate_frame = ttk.Frame(self.notebook)
         self.augmentation_frame = ttk.Frame(self.notebook)
         self.training_frame = ttk.Frame(self.notebook)
+        self.visualizer_frame = ttk.Frame(self.notebook)
         self.inference_frame = ttk.Frame(self.notebook)
 
         # Add tabs to notebook
@@ -90,6 +99,7 @@ class TFLiteModelMakerGUI:
         self.notebook.add(self.preview_validate_frame, text="Preview & Validate")
         self.notebook.add(self.augmentation_frame, text="Augmentation")
         self.notebook.add(self.training_frame, text="Training")
+        self.notebook.add(self.visualizer_frame, text="Training Visualizer")
         self.notebook.add(self.inference_frame, text="Inference")
 
         # Initialize tabs - do this before creating log panel
@@ -100,11 +110,12 @@ class TFLiteModelMakerGUI:
         self.preview_validate_tab = PreviewValidateTab(self.preview_validate_frame, self.log_queue)
         self.augmentation_tab = AugmentationTab(self.augmentation_frame, self.log_queue)
         self.training_tab = TrainingTab(self.training_frame, self.log_queue)
+        self.visualizer_tab = VisualizerTab(self.visualizer_frame, self.log_queue)
 
         # Bottom frame for log panel
         log_container = ttk.Frame(self.main_paned)
         # Set minimum height to prevent collapse
-        log_container.configure(height=200)
+        log_container.configure(height=self.log_panel_height)
         self.main_paned.add(log_container, weight=2)
 
         # Create log panel
@@ -195,8 +206,8 @@ class TFLiteModelMakerGUI:
                 # Get the total height
                 total_height = self.main_paned.winfo_height()
                 if total_height > 100:  # Make sure we have a reasonable height
-                    # Set to 60% for notebook
-                    sash_position = int(total_height * 0.6)
+                    # Set to 70% for notebook, 30% for log panel
+                    sash_position = int(total_height * 0.70)
                     self.main_paned.sashpos(0, sash_position)
                 else:
                     # If height is still too small, try again later
@@ -244,24 +255,65 @@ class TFLiteModelMakerGUI:
             pass
 
     def create_log_panel(self, parent):
+        # Store parent for toggle functionality
+        self.log_container = parent
+
         # Main log frame that fills parent
         log_main_frame = ttk.Frame(parent)
         log_main_frame.pack(fill='both', expand=True)
+        self.log_main_frame = log_main_frame
 
         # Configure grid weights
-        log_main_frame.rowconfigure(0, weight=1)
+        log_main_frame.rowconfigure(1, weight=1)  # Log content in row 1
         log_main_frame.columnconfigure(0, weight=1)
 
-        log_frame = ttk.LabelFrame(log_main_frame, text="Log Output", padding="5")
-        log_frame.grid(row=0, column=0, sticky='nsew')
+        # Create header frame with collapse button
+        header_frame = ttk.Frame(log_main_frame)
+        header_frame.grid(row=0, column=0, sticky='ew', pady=(0, 2))
+        header_frame.columnconfigure(1, weight=1)
+
+        # Collapse/Expand button
+        self.collapse_symbol = "▼"
+        self.expand_symbol = "▶"
+        self.toggle_btn = ttk.Button(
+            header_frame,
+            text=self.collapse_symbol,
+            width=3,
+            command=self.toggle_log_panel
+        )
+        self.toggle_btn.grid(row=0, column=0, padx=(0, 8))
+
+        # Log panel title
+        self.log_title_label = ttk.Label(header_frame, text="Log Output",
+                                         font=('TkDefaultFont', 10, 'bold'))
+        self.log_title_label.grid(row=0, column=1, sticky='w')
+
+        # Quick stats and controls in header
+        header_controls = ttk.Frame(header_frame)
+        header_controls.grid(row=0, column=2, sticky='e')
+
+        # Add log level label to header
+        self.log_level_label = ttk.Label(header_controls, text="Log entries: 0",
+                                         font=('TkDefaultFont', 8))
+        self.log_level_label.pack(side=tk.LEFT, padx=(0, 10))
+
+        # Maximize button for full screen log view
+        self.maximize_btn = ttk.Button(header_controls, text="⛶", width=3,
+                                       command=self.maximize_log_panel,
+                                       state="normal" if self.log_panel_visible else "disabled")
+        self.maximize_btn.pack(side=tk.LEFT, padx=(0, 5))
+
+        # Main log frame (collapsible)
+        self.log_frame = ttk.LabelFrame(log_main_frame, text="", padding="5")
+        self.log_frame.grid(row=1, column=0, sticky='nsew')
 
         # Configure internal weights
-        log_frame.rowconfigure(0, weight=1)
-        log_frame.columnconfigure(0, weight=1)
+        self.log_frame.rowconfigure(0, weight=1)
+        self.log_frame.columnconfigure(0, weight=1)
 
         # Create text widget with larger font
         self.log_text = scrolledtext.ScrolledText(
-            log_frame,
+            self.log_frame,
             wrap=tk.WORD,
             font=('Consolas', 10),
             bg='#f0f0f0',
@@ -270,7 +322,7 @@ class TFLiteModelMakerGUI:
         self.log_text.grid(row=0, column=0, sticky='nsew')
 
         # Button frame
-        button_frame = ttk.Frame(log_frame)
+        button_frame = ttk.Frame(self.log_frame)
         button_frame.grid(row=1, column=0, sticky='ew', pady=(5, 0))
 
         # Add buttons with better layout
@@ -283,9 +335,90 @@ class TFLiteModelMakerGUI:
         ttk.Button(button_frame, text="Copy All",
                    command=self.copy_log).pack(side=tk.RIGHT, padx=(0, 5))
 
-        # Add log level label
-        self.log_level_label = ttk.Label(button_frame, text="Log entries: 0")
-        self.log_level_label.pack(side=tk.LEFT)
+    def toggle_log_panel(self):
+        """Toggle the log panel visibility."""
+        try:
+            if self.log_panel_visible:
+                # Collapse the log panel
+                self.log_panel_visible = False
+                self.toggle_btn.configure(text=self.expand_symbol)
+                self.maximize_btn.configure(state="disabled")
+
+                # Hide the log frame content
+                self.log_frame.grid_remove()
+
+                # Configure the log container to minimum height
+                self.log_container.configure(height=self.collapsed_height)
+
+                # Update the paned window weights to give more space to notebook
+                self.main_paned.paneconfig(self.notebook_container, weight=10)
+                self.main_paned.paneconfig(self.log_container, weight=0)
+
+            else:
+                # Expand the log panel
+                self.log_panel_visible = True
+                self.toggle_btn.configure(text=self.collapse_symbol)
+                self.maximize_btn.configure(state="normal")
+
+                # Show the log frame content
+                self.log_frame.grid()
+
+                # Restore the log container height
+                self.log_container.configure(height=self.log_panel_height)
+
+                # Restore normal weights
+                self.main_paned.paneconfig(self.notebook_container, weight=3)
+                self.main_paned.paneconfig(self.log_container, weight=2)
+
+            # Force update layout
+            self.root.update_idletasks()
+            self._log_message(f"Log panel {'collapsed' if not self.log_panel_visible else 'expanded'}")
+
+        except Exception as e:
+            print(f"Error toggling log panel: {e}")
+
+    def maximize_log_panel(self):
+        """Maximize or restore the log panel."""
+        try:
+            if not self.maximized_log:
+                # Store current sash position
+                try:
+                    self.previous_sash_pos = self.main_paned.sashpos(0)
+                except:
+                    self.previous_sash_pos = None
+
+                # Maximize log panel
+                self.maximized_log = True
+                self.maximize_btn.configure(text="🗗")  # Restore button
+
+                # Give almost all space to log panel
+                total_height = self.main_paned.winfo_height()
+                if total_height > 100:
+                    self.main_paned.sashpos(0, 50)  # Leave minimal space for notebook
+
+                self.main_paned.paneconfig(self.notebook_container, weight=0)
+                self.main_paned.paneconfig(self.log_container, weight=10)
+
+            else:
+                # Restore log panel
+                self.maximized_log = False
+                self.maximize_btn.configure(text="⛶")  # Maximize button
+
+                # Restore previous sash position or default
+                if self.previous_sash_pos:
+                    self.main_paned.sashpos(0, self.previous_sash_pos)
+                else:
+                    self._set_initial_sash_position()
+
+                # Restore normal weights
+                self.main_paned.paneconfig(self.notebook_container, weight=3)
+                self.main_paned.paneconfig(self.log_container, weight=2)
+
+            self.root.update_idletasks()
+            self._log_message(f"Log panel {'maximized' if self.maximized_log else 'restored'}")
+
+        except Exception as e:
+            print(f"Error maximizing log panel: {e}")
 
     def clear_log(self):
         self.log_text.delete(1.0, tk.END)
@@ -306,6 +439,11 @@ class TFLiteModelMakerGUI:
         self.root.clipboard_clear()
         self.root.clipboard_append(self.log_text.get(1.0, tk.END))
         messagebox.showinfo("Success", "Log copied to clipboard!")
+
+    def _log_message(self, message):
+        """Internal logging method."""
+        if self.log_queue:
+            self.log_queue.put(f"[GUI] {message}")
 
     def process_log_queue(self):
         try:
@@ -329,3 +467,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = TFLiteModelMakerGUI(root)
     root.mainloop()
+

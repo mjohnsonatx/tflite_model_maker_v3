@@ -59,7 +59,7 @@ BACKBONE = 'efficientnetv2_b3_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
-KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
+#KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
 BARBELL_LABEL_MAP = {1: "barbell"}
 
 HPARAMS = {
@@ -77,9 +77,9 @@ HPARAMS = {
     },
     'alpha': 0.25,
     'gamma': 1.5,
-    'delta': 0.1,
-    'box_loss_weight': 60.0,
-    'label_smoothing': 0.15,
+    'delta': 0.05,
+    'box_loss_weight': 70.0,
+    'label_smoothing': 0.1,
     'learning_rate': 0.0045,
     'lr_warmup_init': 0.0003,
     'lr_warmup_epoch': 8.0,
@@ -89,12 +89,12 @@ HPARAMS = {
     'poly_lr_power': 0.9,
     'momentum': 0.9,
     'optimizer': 'sgd',
-    'weight_decay': 1e-4,
+    'weight_decay': 0.0001,
     'clip_gradients_norm': 10.0,
     'moving_average_decay': 0.9998,
     'input_rand_hflip': True,
-    'jitter_min': 0.8,
-    'jitter_max': 1.25,
+    'jitter_min': 0.85,
+    'jitter_max': 1.15,
     'autoaugment_policy': 'v2',
     'grid_mask': False,
     'anchor_scale': 4.0,
