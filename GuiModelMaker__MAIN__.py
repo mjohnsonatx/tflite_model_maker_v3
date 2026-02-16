@@ -1,4 +1,3 @@
-import os
 import queue
 import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog, messagebox
@@ -467,4 +466,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = TFLiteModelMakerGUI(root)
     root.mainloop()
-
