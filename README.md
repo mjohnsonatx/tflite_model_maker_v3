@@ -103,6 +103,13 @@ After this step you have three clean directories ready for training.
 
 **Tab: Training**
 
+### ************ TAB STILL UNDER CONSTRUCTION *************
+###     Train from: 
+
+```bash
+python main.py
+```
+### ************ TAB STILL UNDER CONSTRUCTION *************
 Configure the EfficientDet-Lite architecture, set hyperparameters, and kick off training with CUDA.
 
 Key settings:
@@ -127,6 +134,14 @@ Training runs with mixed-precision (float16) on GPU. Checkpoints are saved autom
 ---
 
 ## Step 8 — A/B Test with the Training Visualizer
+
+### ********* TAB STILL UNDER CONSTRUCTION *************
+###     Run visualizer from: 
+
+```bash
+python run_visualizer.py
+```
+### ************ TAB STILL UNDER CONSTRUCTION *************
 
 **Tab: Training Visualizer**
 
