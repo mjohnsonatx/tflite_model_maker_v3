@@ -23,36 +23,36 @@ This is where your training data originates. Point the app at a video file (or a
 - Adjust JPEG quality and thread count for performance.
 - The app creates a subdirectory per video and reports timing statistics when finished.
 
-The output is a folder of images ready for cleaning and annotation.
+The output is a folder of images ready for annotation.
 
 ---
 
-## Step 2 — Clean the Data
-
-**Tab: Data Cleaning**
-
-Raw extracted frames need housekeeping before they're useful.
-
-- **Sync XML metadata** — fix filenames and paths inside annotation files so they match the actual images on disk. Supports recursive folder processing with multi-threaded execution.
-- **Remove orphans** — delete images that have no matching XML or XMLs that have no matching image.
-- **Detect outliers** — run statistical analysis on bounding box dimensions (aspect ratio, area percentile) and preview or auto-remove outliers.
-- **Validate dimensions** — verify that image sizes reported in XMLs match the actual pixel dimensions.
-
-This step ensures every image/annotation pair is consistent before you invest time annotating.
-
----
-
-## Step 3 — Annotate
+## Step 2 — Annotate
 
 **Tab: Annotation**
 
-Draw bounding boxes on your images to create Pascal VOC XML annotations.
+Draw bounding boxes on your extracted frames to create Pascal VOC XML annotations. This is where the image/XML pairs originate.
 
 - Load a directory of images and define your label set (e.g. `kettlebell`, `barbell`).
 - Click and drag on the canvas to draw boxes. Each box is assigned the currently selected label.
 - Navigate with Previous / Next / Skip. The app writes one XML per image automatically.
 
 The annotation format is Pascal VOC — the same format consumed by the TFLite Model Maker training library downstream.
+
+---
+
+## Step 3 — Clean the Data
+
+**Tab: Data Cleaning**
+
+Now that annotation has produced XML files, clean up the dataset so every image/annotation pair is consistent.
+
+- **Sync XML metadata** — fix filenames and paths inside annotation files so they match the actual images on disk. Supports recursive folder processing with multi-threaded execution.
+- **Remove orphans** — delete images that have no matching XML or XMLs that have no matching image.
+- **Detect outliers** — run statistical analysis on bounding box dimensions (aspect ratio, area percentile) and preview or auto-remove outliers.
+- **Validate dimensions** — verify that image sizes reported in XMLs match the actual pixel dimensions.
+
+This step catches annotation inconsistencies (mismatched paths, orphaned files, bounding box outliers) before you move on to augmentation and training.
 
 ---
 
@@ -162,7 +162,7 @@ Results can be exported as:
 ## Typical Iteration Loop
 
 ```
-Video  ──>  Frames  ──>  Clean  ──>  Annotate  ──>  Validate
+Video  ──>  Frames  ──>  Annotate  ──>  Clean  ──>  Validate
                                                         │
          ┌──────────────────────────────────────────────┘
          v
