@@ -43,8 +43,10 @@ os.makedirs(tempfile.tempdir, exist_ok=True)
 # -----------------------------
 # Configuration
 # -----------------------------
-EXPORT_BASE_DIR = 'barbell_models'
-DATA_DIR = 'FINAL_BARBELL_DATA'
+# EXPORT_BASE_DIR = 'barbell_models'
+# DATA_DIR = 'FINAL_BARBELL_DATA'
+DATA_DIR = 'db_final_data'
+EXPORT_BASE_DIR_DUMBBELL = 'dumbbell_models'
 
 TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
@@ -53,15 +55,15 @@ TEST_DIR = os.path.join(DATA_DIR, 'test')
 CACHE_DIR = r"D:\tflite_cache"
 
 BATCH_SIZE = 16
-EPOCHS = 200
+EPOCHS = 150
 
 BACKBONE = 'efficientnetv2_b3_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
 TRAIN_WHOLE_MODEL = True
 
 #KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
-BARBELL_LABEL_MAP = {1: "barbell"}
-
+# BARBELL_LABEL_MAP = {1: "barbell"}
+DUMBBELL_LABEL_MAP = {1: "dumbbell"}
 HPARAMS = {
     'backbone_name': BACKBONE,
     'num_classes': 1,
@@ -69,23 +71,23 @@ HPARAMS = {
     'nms_configs': {
         'method': 'gaussian',
         'iou_thresh': 0.4,
-        'score_thresh': 0.65,
+        'score_thresh': 0.6,
         'sigma': 0.5,
         'pyfunc': False,
         'max_nms_inputs': 5000,
         'max_output_size': 100,
     },
     'alpha': 0.25,
-    'gamma': 1.6,
-    'delta': 0.05,
-    'box_loss_weight': 60.0,
-    'label_smoothing': 0.1,
+    'gamma': 1.25,
+    'delta': 0.1,
+    'box_loss_weight': 80.0,
+    'label_smoothing': 0.05,
     'learning_rate': 0.0045,
     'lr_warmup_init': 0.0003,
     'lr_warmup_epoch': 8.0,
     'lr_decay_method': 'cosine',
-    'first_lr_drop_epoch': 70.0,
-    'second_lr_drop_epoch': 90.0,
+    'first_lr_drop_epoch': 20.0,
+    'second_lr_drop_epoch': 40.0,
     'poly_lr_power': 0.9,
     'momentum': 0.9,
     'optimizer': 'sgd',
@@ -93,13 +95,13 @@ HPARAMS = {
     'clip_gradients_norm': 10.0,
     'moving_average_decay': 0.9998,
     'input_rand_hflip': True,
-    'jitter_min': 0.6,
-    'jitter_max': 1.4,
-    'autoaugment_policy': 'v2',
+    'jitter_min': 0.85,
+    'jitter_max': 1.15,
+    'autoaugment_policy': None,
     'grid_mask': False,
-    'anchor_scale': 4.0,
-    'aspect_ratios': [0.5, 1.0, 2.0],
-    'num_scales': 3,
+    'anchor_scale': 2.5,
+    'aspect_ratios': [0.33, 0.5, 1.0, 2.0, 3.0],
+    'num_scales': 2,
     'skip_crowd_during_training': True,
     'max_instances_per_image': 100,
     'mixed_precision': False,
@@ -226,7 +228,7 @@ if __name__ == "__main__":
 
     # Create dated export directory
     date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    EXPORT_DIR = os.path.join(EXPORT_BASE_DIR, f"{ARCHITECTURE}_{date_str}")
+    EXPORT_DIR = os.path.join(EXPORT_BASE_DIR_DUMBBELL, f"{ARCHITECTURE}_{date_str}")
     os.makedirs(EXPORT_DIR, exist_ok=True)
 
     # Set up logging
@@ -272,21 +274,21 @@ if __name__ == "__main__":
         train = object_detector.DataLoader.from_pascal_voc(
             images_dir=TRAIN_DIR,
             annotations_dir=TRAIN_DIR,
-            label_map=BARBELL_LABEL_MAP,
+            label_map=DUMBBELL_LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=4
         )
         valid = object_detector.DataLoader.from_pascal_voc(
             images_dir=VALID_DIR,
             annotations_dir=VALID_DIR,
-            label_map=BARBELL_LABEL_MAP,
+            label_map=DUMBBELL_LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=2
         )
         test = object_detector.DataLoader.from_pascal_voc(
             images_dir=TEST_DIR,
             annotations_dir=TEST_DIR,
-            label_map=BARBELL_LABEL_MAP,
+            label_map=DUMBBELL_LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=1
         )
@@ -327,7 +329,7 @@ if __name__ == "__main__":
         # -----------------------------
         # Export model
         # -----------------------------
-        tflite_filename = f"__BARBELL__{ARCHITECTURE}_{date_str}.tflite"
+        tflite_filename = f"__DUMBBELL__{ARCHITECTURE}_{date_str}.tflite"
 
         print(f"\nExporting model to {EXPORT_DIR}...")
         model.export(

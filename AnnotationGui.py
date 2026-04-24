@@ -8,12 +8,15 @@ from xml.dom.minidom import parseString
 import cv2
 from PIL import Image, ImageTk
 
+from LabelMemory import LabelMemory
+
 # TODO add previous button that also shows the xml and bbox if present
 class AnnotationTab:
     def __init__(self, parent, log_queue):
         self.parent = parent
         self.log_queue = log_queue
         self.app_root = os.path.dirname(os.path.abspath(__file__))
+        self.label_memory = LabelMemory(self.app_root)
         self.current_image = None
         self.current_image_path = None
         self.annotations = []
@@ -79,10 +82,12 @@ class AnnotationTab:
         self.current_label_combo = ttk.Combobox(label_frame, textvariable=self.current_label_var,
                                                 state="readonly", width=20)
         self.current_label_combo.grid(row=2, column=1, sticky=tk.W, pady=(10, 0))
+        self.current_label_combo.bind("<<ComboboxSelected>>", lambda e: self.save_label_memory())
 
-        # Add default label
-        self.label_listbox.insert(tk.END, "kettlebell")
-        self.update_label_combo()
+        for label in self.label_memory.labels:
+            self.label_listbox.insert(tk.END, label)
+        self.current_label_var.set(self.label_memory.current_label)
+        self.update_label_combo(save=False)
 
         # Section 3: Annotation Controls
         ttk.Label(main_frame, text="Annotation Controls",
@@ -150,6 +155,7 @@ class AnnotationTab:
         if label and label not in self.label_listbox.get(0, tk.END):
             self.label_listbox.insert(tk.END, label)
             self.new_label_var.set("")
+            self.current_label_var.set(label)
             self.update_label_combo()
             self.log_queue.put(f"Added label: {label}")
 
@@ -161,11 +167,23 @@ class AnnotationTab:
             self.update_label_combo()
             self.log_queue.put(f"Removed label: {label}")
 
-    def update_label_combo(self):
+    def update_label_combo(self, save=True):
         labels = list(self.label_listbox.get(0, tk.END))
         self.current_label_combo['values'] = labels
-        if labels and not self.current_label_var.get():
+        current_label = self.current_label_var.get()
+
+        if labels and current_label not in labels:
             self.current_label_var.set(labels[0])
+        elif not labels:
+            self.current_label_var.set("")
+
+        if save:
+            self.save_label_memory()
+
+    def save_label_memory(self):
+        labels = list(self.label_listbox.get(0, tk.END))
+        current_label = self.current_label_var.get()
+        self.label_memory.save(labels, current_label=current_label)
 
     def update_info(self, message):
         self.info_text.delete(1.0, tk.END)
@@ -194,6 +212,7 @@ class AnnotationTab:
             messagebox.showinfo("Info", "No images without annotations found.")
             return
 
+        self.save_label_memory()
         self.current_index = 0
         self.show_current_image()
 
@@ -339,6 +358,7 @@ class AnnotationTab:
                 self.rect_ids.append(self.current_rect)
                 self.text_ids.append(label_text)
 
+                self.save_label_memory()
                 self.log_queue.put(f"Added {self.current_label_var.get()} annotation")
             else:
                 # Remove invalid rectangle
@@ -373,6 +393,11 @@ class AnnotationTab:
     def save_current_annotations(self):
         if not self.annotations:
             return
+
+        self.label_memory.merge_labels(
+            [ann['label'] for ann in self.annotations],
+            current_label=self.current_label_var.get()
+        )
 
         # Create XML
         annotation = ET.Element("annotation")
