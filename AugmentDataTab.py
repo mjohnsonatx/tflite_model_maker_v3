@@ -141,20 +141,96 @@ class AugmentationTab:
         ttk.Button(preview_frame, text="Preview Augmentation",
                    command=self.preview_augmentation).pack()
 
-        # Section 3: Progress
+        # Section 3: Black-Out MAKE_BLACK_BOX labels
+        blackout_frame = ttk.LabelFrame(main_frame, text="Black Out Labeled Regions",
+                                        padding="10")
+        blackout_frame.grid(row=5, column=0, columnspan=3,
+                            sticky=(tk.W, tk.E), pady=(10, 10))
+        blackout_frame.columnconfigure(1, weight=1)
+
+        description = (
+            "Fills every bounding box whose label matches the pattern below with "
+            "solid black pixels, then removes those objects from the XML. Use this "
+            "for notes like MAKE_BLACK_BOX that mark regions to mask out before "
+            "training or inference."
+        )
+        ttk.Label(blackout_frame, text=description, wraplength=720,
+                  justify=tk.LEFT).grid(row=0, column=0, columnspan=3,
+                                        sticky=tk.W, pady=(0, 8))
+
+        ttk.Label(blackout_frame, text="Source Directory:").grid(
+            row=1, column=0, sticky=tk.W, padx=(0, 10)
+        )
+        self.blackout_source_var = tk.StringVar()
+        ttk.Entry(blackout_frame, textvariable=self.blackout_source_var, width=50).grid(
+            row=1, column=1, sticky=(tk.W, tk.E)
+        )
+        ttk.Button(blackout_frame, text="Browse",
+                   command=self.browse_blackout_source).grid(
+            row=1, column=2, padx=(5, 0)
+        )
+
+        ttk.Label(blackout_frame, text="Output Directory:").grid(
+            row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(6, 0)
+        )
+        self.blackout_dest_var = tk.StringVar()
+        ttk.Entry(blackout_frame, textvariable=self.blackout_dest_var, width=50).grid(
+            row=2, column=1, sticky=(tk.W, tk.E), pady=(6, 0)
+        )
+        ttk.Button(blackout_frame, text="Browse",
+                   command=self.browse_blackout_dest).grid(
+            row=2, column=2, padx=(5, 0), pady=(6, 0)
+        )
+
+        self.blackout_inplace_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            blackout_frame,
+            text="Overwrite source files in place (ignores Output Directory)",
+            variable=self.blackout_inplace_var
+        ).grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(6, 0))
+
+        label_row = ttk.Frame(blackout_frame)
+        label_row.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(6, 0))
+        ttk.Label(label_row, text="Label pattern (comma separated):").pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        self.blackout_labels_var = tk.StringVar(value="MAKE_BLACK_BOX")
+        ttk.Entry(label_row, textvariable=self.blackout_labels_var, width=40).pack(
+            side=tk.LEFT
+        )
+
+        self.blackout_case_sensitive_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(blackout_frame, text="Case sensitive match",
+                        variable=self.blackout_case_sensitive_var).grid(
+            row=5, column=0, columnspan=3, sticky=tk.W, pady=(6, 0)
+        )
+
+        self.blackout_remove_xml_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            blackout_frame,
+            text="Remove matched objects from XML after filling",
+            variable=self.blackout_remove_xml_var
+        ).grid(row=6, column=0, columnspan=3, sticky=tk.W, pady=(2, 0))
+
+        ttk.Button(blackout_frame, text="Run Black-Out",
+                   command=self.start_blackout).grid(
+            row=7, column=0, columnspan=3, sticky=tk.W, pady=(8, 0)
+        )
+
+        # Section 4: Progress
         ttk.Label(main_frame, text="Progress",
-                  font=('TkDefaultFont', 12, 'bold')).grid(row=5, column=0, columnspan=3, pady=(20, 10))
+                  font=('TkDefaultFont', 12, 'bold')).grid(row=6, column=0, columnspan=3, pady=(20, 10))
 
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, maximum=100)
-        self.progress_bar.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.progress_bar.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
 
         self.status_label = ttk.Label(main_frame, text="Ready")
-        self.status_label.grid(row=7, column=0, columnspan=3)
+        self.status_label.grid(row=8, column=0, columnspan=3)
 
         # Action buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=8, column=0, columnspan=3, pady=(20, 0))
+        button_frame.grid(row=9, column=0, columnspan=3, pady=(20, 0))
 
         self.start_btn = ttk.Button(button_frame, text="Start Augmentation",
                                     command=self.start_augmentation)
@@ -180,6 +256,182 @@ class AugmentationTab:
         )
         if directory:
             self.dest_dir_var.set(directory)
+
+    def browse_blackout_source(self):
+        directory = filedialog.askdirectory(
+            title="Select Source Directory for Black-Out",
+            initialdir=self.app_root
+        )
+        if directory:
+            self.blackout_source_var.set(directory)
+
+    def browse_blackout_dest(self):
+        directory = filedialog.askdirectory(
+            title="Select Output Directory for Black-Out",
+            initialdir=self.app_root
+        )
+        if directory:
+            self.blackout_dest_var.set(directory)
+
+    def start_blackout(self):
+        source = self.blackout_source_var.get().strip()
+        if not source or not os.path.isdir(source):
+            messagebox.showwarning("Warning", "Select a valid source directory.")
+            return
+
+        in_place = self.blackout_inplace_var.get()
+        dest = source if in_place else self.blackout_dest_var.get().strip()
+        if not in_place and not dest:
+            messagebox.showwarning(
+                "Warning",
+                "Either enable in-place mode or pick an output directory."
+            )
+            return
+
+        patterns = [p.strip() for p in self.blackout_labels_var.get().split(',') if p.strip()]
+        if not patterns:
+            messagebox.showwarning(
+                "Warning",
+                "Provide at least one label to match (e.g., MAKE_BLACK_BOX)."
+            )
+            return
+
+        if in_place:
+            confirm = messagebox.askyesno(
+                "Overwrite Source Files?",
+                "In-place mode will overwrite image and XML files under:\n"
+                f"{source}\n\nThis cannot be undone. Continue?"
+            )
+            if not confirm:
+                return
+
+        case_sensitive = self.blackout_case_sensitive_var.get()
+        remove_from_xml = self.blackout_remove_xml_var.get()
+
+        thread = threading.Thread(
+            target=self._blackout_thread,
+            args=(source, dest, patterns, case_sensitive, remove_from_xml, in_place),
+            daemon=True
+        )
+        thread.start()
+
+    def _blackout_thread(self, source, dest, patterns, case_sensitive,
+                         remove_from_xml, in_place):
+        try:
+            if not in_place:
+                os.makedirs(dest, exist_ok=True)
+
+            normalized_patterns = patterns if case_sensitive else [p.lower() for p in patterns]
+
+            def _matches(label):
+                value = label if case_sensitive else label.lower()
+                return value in normalized_patterns
+
+            image_files = sorted(
+                f for f in os.listdir(source)
+                if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+            )
+            if not image_files:
+                self.log_queue.put("Black-Out: no images found in source directory.")
+                return
+
+            processed = 0
+            filled_boxes = 0
+            skipped = 0
+            copied_untouched = 0
+            total = len(image_files)
+
+            self.log_queue.put("=== Black-Out Run ===")
+            self.log_queue.put(f"Source: {source}")
+            self.log_queue.put(f"Destination: {dest} ({'in-place' if in_place else 'copy'})")
+            self.log_queue.put(f"Labels: {', '.join(patterns)}")
+
+            self._update_progress(0, "Black-Out: starting...")
+
+            for index, image_file in enumerate(image_files):
+                image_path = os.path.join(source, image_file)
+                xml_path = os.path.join(source, Path(image_file).stem + '.xml')
+                out_image_path = os.path.join(dest, image_file)
+                out_xml_path = os.path.join(dest, Path(image_file).stem + '.xml')
+
+                try:
+                    image = cv2.imread(image_path)
+                    if image is None:
+                        self.log_queue.put(f"Could not load image, skipping: {image_file}")
+                        skipped += 1
+                        continue
+
+                    if not os.path.exists(xml_path):
+                        if not in_place:
+                            cv2.imwrite(out_image_path, image)
+                            copied_untouched += 1
+                        continue
+
+                    tree = ET.parse(xml_path)
+                    xml_root = tree.getroot()
+                    height, width = image.shape[:2]
+
+                    matches = []
+                    for obj in list(xml_root.findall('object')):
+                        name = (obj.findtext('name') or '').strip()
+                        if not _matches(name):
+                            continue
+                        bbox = obj.find('bndbox')
+                        if bbox is None:
+                            continue
+                        try:
+                            xmin = int(round(float(bbox.findtext('xmin'))))
+                            ymin = int(round(float(bbox.findtext('ymin'))))
+                            xmax = int(round(float(bbox.findtext('xmax'))))
+                            ymax = int(round(float(bbox.findtext('ymax'))))
+                        except (TypeError, ValueError):
+                            continue
+
+                        xmin = max(0, min(width, xmin))
+                        xmax = max(0, min(width, xmax))
+                        ymin = max(0, min(height, ymin))
+                        ymax = max(0, min(height, ymax))
+                        if xmax <= xmin or ymax <= ymin:
+                            continue
+
+                        image[ymin:ymax, xmin:xmax] = 0
+                        matches.append(obj)
+                        filled_boxes += 1
+
+                    if matches:
+                        if remove_from_xml:
+                            for obj in matches:
+                                xml_root.remove(obj)
+                        cv2.imwrite(out_image_path, image)
+                        tree.write(out_xml_path, encoding='utf-8', xml_declaration=False)
+                        processed += 1
+                        self.log_queue.put(
+                            f"Black-Out: filled {len(matches)} region(s) in {image_file}"
+                        )
+                    elif not in_place:
+                        cv2.imwrite(out_image_path, image)
+                        tree.write(out_xml_path, encoding='utf-8', xml_declaration=False)
+                        copied_untouched += 1
+
+                except Exception as exc:
+                    skipped += 1
+                    self.log_queue.put(f"Black-Out error on {image_file}: {exc}")
+
+                percent = ((index + 1) / total) * 100
+                self._update_progress(percent, f"Black-Out: {image_file}")
+
+            self.log_queue.put("=== Black-Out Finished ===")
+            self.log_queue.put(f"Images modified: {processed}")
+            self.log_queue.put(f"Regions filled: {filled_boxes}")
+            if not in_place:
+                self.log_queue.put(f"Images copied unchanged: {copied_untouched}")
+            if skipped:
+                self.log_queue.put(f"Skipped: {skipped}")
+
+        except Exception as exc:
+            self.log_queue.put(f"Black-Out failed: {exc}")
+        finally:
+            self._update_progress(0, "Ready")
 
     def preview_augmentation(self):
         if not self.source_dir_var.get():
