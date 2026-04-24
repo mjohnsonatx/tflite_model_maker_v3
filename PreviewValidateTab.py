@@ -162,6 +162,8 @@ class PreviewValidateTab:
                    command=self._apply_folder_label_filter).pack(side=tk.LEFT, padx=5)
         ttk.Button(folder_labels_buttons, text="Remember All Labels",
                    command=self._remember_folder_labels).pack(side=tk.LEFT, padx=5)
+        ttk.Button(folder_labels_buttons, text="Strip Selected from Folder",
+                   command=self._strip_selected_folder_label).pack(side=tk.LEFT, padx=5)
 
         # Section 4: Controls
         ttk.Label(main_frame, text="Controls",
@@ -431,6 +433,95 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.log_queue.put(
             f"Remembered {len(labels)} folder label(s) for the Annotation tab."
         )
+
+    def _strip_selected_folder_label(self):
+        """Remove every <object> entry whose name matches the selected label
+        from every XML in the loaded directory.
+
+        Empty XML files (no objects left after stripping) are left in place;
+        the user can drop those individually with the existing
+        "Delete Annotation XML" control or scrub them from the Annotation tab.
+        """
+        if not self.dir_var.get():
+            messagebox.showwarning("Warning", "Please select a directory first.")
+            return
+
+        label = self._selected_folder_label()
+        if not label:
+            messagebox.showinfo(
+                "Info",
+                "Select a label in the Folder Labels list (Scan first if needed)."
+            )
+            return
+
+        affected_files = []
+        total_objects = 0
+        for image_file in self.all_image_files:
+            xml_path = self._xml_path_for_image(image_file)
+            if not os.path.exists(xml_path):
+                continue
+            try:
+                root = ET.parse(xml_path).getroot()
+            except ET.ParseError:
+                continue
+            count = sum(
+                1 for obj in root.findall('object')
+                if (obj.findtext('name') or '').strip() == label
+            )
+            if count:
+                affected_files.append((image_file, xml_path, count))
+                total_objects += count
+
+        if not affected_files:
+            messagebox.showinfo("Info", f"No XMLs contain label '{label}'.")
+            return
+
+        confirm = messagebox.askyesno(
+            "Strip Label From Folder",
+            f"Remove '{label}' from {len(affected_files)} XML file(s) "
+            f"({total_objects} object(s) total)?\n\n"
+            "Image files will be left untouched. XMLs with no remaining "
+            "objects will keep their <annotation> wrapper but no <object> "
+            "entries — delete them individually if you want them gone."
+        )
+        if not confirm:
+            return
+
+        modified = 0
+        removed_objects = 0
+        errors = 0
+
+        for image_file, xml_path, _ in affected_files:
+            try:
+                tree = ET.parse(xml_path)
+                root = tree.getroot()
+                to_remove = [
+                    obj for obj in root.findall('object')
+                    if (obj.findtext('name') or '').strip() == label
+                ]
+                if not to_remove:
+                    continue
+                for obj in to_remove:
+                    root.remove(obj)
+                self._write_xml_file(root, xml_path)
+                modified += 1
+                removed_objects += len(to_remove)
+            except Exception as exc:
+                errors += 1
+                self.log_queue.put(f"Could not strip '{label}' from {xml_path}: {exc}")
+
+        self.log_queue.put(
+            f"Stripped '{label}': {removed_objects} object(s) across "
+            f"{modified} XML file(s)."
+            + (f" {errors} error(s)." if errors else "")
+        )
+
+        # Refresh statistics, the folder label list, and any active preview.
+        preserve_file = None
+        if 0 <= self.current_index < len(self.image_files):
+            preserve_file = self.image_files[self.current_index]
+        self.scan_folder_labels()
+        self.apply_filters(preserve_file=preserve_file)
 
     def _on_labels_changed(self, labels, current_label):
         """React to LabelMemory updates from another tab or this tab."""
