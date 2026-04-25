@@ -5,3 +5,5 @@
 /annotation_label_memory.json
 /robo_1_FIRST_PASS_CLEAN_COMPLETE/
 /robo_2/
+__pycache__/
+*.py[cod]

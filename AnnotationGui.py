@@ -89,6 +89,8 @@ class AnnotationTab:
         self.current_label_var.set(self.label_memory.current_label)
         self.update_label_combo(save=False)
 
+        self.label_memory.subscribe(self._on_label_memory_changed)
+
         # Section 3: Annotation Controls
         ttk.Label(main_frame, text="Annotation Controls",
                   font=('TkDefaultFont', 12, 'bold')).grid(row=4, column=0, columnspan=3, pady=(20, 10))
@@ -184,6 +186,27 @@ class AnnotationTab:
         labels = list(self.label_listbox.get(0, tk.END))
         current_label = self.current_label_var.get()
         self.label_memory.save(labels, current_label=current_label)
+
+    def _on_label_memory_changed(self, labels, current_label):
+        """Keep the Annotation tab listbox/combobox in sync with LabelMemory.
+
+        Fired whenever LabelMemory is updated, including changes coming from
+        the Preview & Validate tab.
+        """
+        try:
+            existing = list(self.label_listbox.get(0, tk.END))
+            if existing != list(labels):
+                self.label_listbox.delete(0, tk.END)
+                for label in labels:
+                    self.label_listbox.insert(tk.END, label)
+            self.current_label_combo['values'] = list(labels)
+            if current_label and current_label in labels:
+                if self.current_label_var.get() != current_label:
+                    self.current_label_var.set(current_label)
+            elif labels and self.current_label_var.get() not in labels:
+                self.current_label_var.set(labels[0])
+        except tk.TclError:
+            pass
 
     def update_info(self, message):
         self.info_text.delete(1.0, tk.END)

@@ -34,7 +34,10 @@ class PreviewValidateTab:
         self.reannotation_start_x = None
         self.reannotation_start_y = None
         self.reannotation_canvas = None
+        self.folder_labels_listbox = None
+        self.folder_labels_summary_var = None
         self.setup_ui()
+        self.label_memory.subscribe(self._on_labels_changed)
 
     def setup_ui(self):
         # Create main frame
@@ -117,12 +120,57 @@ class PreviewValidateTab:
             row=2, column=0, columnspan=3, sticky=tk.W, pady=(8, 0)
         )
 
+        # Section 3b: Folder label scan
+        folder_labels_frame = ttk.LabelFrame(main_frame, text="Folder Labels", padding="10")
+        folder_labels_frame.grid(row=4, column=0, columnspan=3,
+                                 sticky=(tk.W, tk.E), pady=(0, 10))
+        folder_labels_frame.columnconfigure(0, weight=1)
+
+        self.folder_labels_summary_var = tk.StringVar(
+            value="Scan the folder to see every label present in the XML files."
+        )
+        ttk.Label(folder_labels_frame, textvariable=self.folder_labels_summary_var).grid(
+            row=0, column=0, columnspan=2, sticky=tk.W
+        )
+
+        labels_list_frame = ttk.Frame(folder_labels_frame)
+        labels_list_frame.grid(row=1, column=0, columnspan=2,
+                               sticky=(tk.W, tk.E), pady=(8, 0))
+        labels_list_frame.columnconfigure(0, weight=1)
+
+        labels_scroll = ttk.Scrollbar(labels_list_frame, orient=tk.VERTICAL)
+        labels_scroll.grid(row=0, column=1, sticky=(tk.N, tk.S))
+
+        self.folder_labels_listbox = tk.Listbox(
+            labels_list_frame,
+            height=6,
+            yscrollcommand=labels_scroll.set
+        )
+        self.folder_labels_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        labels_scroll.config(command=self.folder_labels_listbox.yview)
+        self.folder_labels_listbox.bind(
+            "<<ListboxSelect>>",
+            lambda e: self._apply_folder_label_filter()
+        )
+
+        folder_labels_buttons = ttk.Frame(folder_labels_frame)
+        folder_labels_buttons.grid(row=2, column=0, columnspan=2,
+                                   sticky=tk.W, pady=(6, 0))
+        ttk.Button(folder_labels_buttons, text="Scan Folder XMLs",
+                   command=self.scan_folder_labels).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(folder_labels_buttons, text="Filter by Selected",
+                   command=self._apply_folder_label_filter).pack(side=tk.LEFT, padx=5)
+        ttk.Button(folder_labels_buttons, text="Remember All Labels",
+                   command=self._remember_folder_labels).pack(side=tk.LEFT, padx=5)
+        ttk.Button(folder_labels_buttons, text="Strip Selected from Folder",
+                   command=self._strip_selected_folder_label).pack(side=tk.LEFT, padx=5)
+
         # Section 4: Controls
         ttk.Label(main_frame, text="Controls",
-                  font=('TkDefaultFont', 12, 'bold')).grid(row=4, column=0, columnspan=3, pady=(20, 10))
+                  font=('TkDefaultFont', 12, 'bold')).grid(row=5, column=0, columnspan=3, pady=(20, 10))
 
         control_frame = ttk.Frame(main_frame)
-        control_frame.grid(row=5, column=0, columnspan=3, pady=(0, 10))
+        control_frame.grid(row=6, column=0, columnspan=3, pady=(0, 10))
 
         ttk.Button(control_frame, text="Start Preview",
                    command=self.start_preview).grid(row=0, column=0, padx=5)
@@ -141,7 +189,7 @@ class PreviewValidateTab:
 
         # Info section
         info_frame = ttk.LabelFrame(main_frame, text="Instructions", padding="10")
-        info_frame.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
+        info_frame.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
 
         info_text = """Keyboard shortcuts during preview:
 - Arrow Left/Right or A/D: Navigate between images
@@ -160,14 +208,14 @@ Note: Deleted files are permanently removed. Use with caution!"""
 
         # Statistics
         self.stats_frame = ttk.LabelFrame(main_frame, text="Statistics", padding="10")
-        self.stats_frame.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.stats_frame.grid(row=8, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 0))
 
         self.stats_text = tk.Text(self.stats_frame, height=8, wrap=tk.WORD)
         self.stats_text.pack(fill="both", expand=True)
 
         # Progress
         self.progress_label = ttk.Label(main_frame, text="")
-        self.progress_label.grid(row=8, column=0, columnspan=3, pady=(10, 0))
+        self.progress_label.grid(row=9, column=0, columnspan=3, pady=(10, 0))
 
     def browse_directory(self):
         directory = filedialog.askdirectory(
@@ -317,6 +365,173 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self.search_summary_var.set(f"Showing {matching} of {total} images matching the current search")
         else:
             self.search_summary_var.set(f"Showing all {total} images")
+
+    def scan_folder_labels(self):
+        """Scan every XML in the loaded directory and report distinct labels."""
+        if not self.dir_var.get():
+            messagebox.showwarning("Warning", "Please select a directory first.")
+            return
+
+        if not self.all_image_files:
+            self.load_images()
+
+        label_counts = {}
+        scanned = 0
+        for image_file in self.all_image_files:
+            xml_path = self._xml_path_for_image(image_file)
+            if not os.path.exists(xml_path):
+                continue
+            scanned += 1
+            for label in self._get_image_labels(image_file):
+                label_counts[label] = label_counts.get(label, 0) + 1
+
+        if self.folder_labels_listbox is not None:
+            self.folder_labels_listbox.delete(0, tk.END)
+            for label, count in sorted(label_counts.items()):
+                self.folder_labels_listbox.insert(tk.END, f"{label}  ({count})")
+
+        if not label_counts:
+            summary = f"Scanned {scanned} XML file(s); no labels found."
+        else:
+            summary = (f"Scanned {scanned} XML file(s) — "
+                       f"{len(label_counts)} distinct label(s), "
+                       f"{sum(label_counts.values())} total object(s).")
+        if self.folder_labels_summary_var is not None:
+            self.folder_labels_summary_var.set(summary)
+        self.log_queue.put(summary)
+        return label_counts
+
+    def _selected_folder_label(self):
+        if self.folder_labels_listbox is None:
+            return None
+        selection = self.folder_labels_listbox.curselection()
+        if not selection:
+            return None
+        entry = self.folder_labels_listbox.get(selection[0])
+        label = entry.rsplit("(", 1)[0].strip()
+        return label or None
+
+    def _apply_folder_label_filter(self):
+        label = self._selected_folder_label()
+        if not label:
+            return
+        self.label_filter_var.set(label)
+        self.apply_filters()
+
+    def _remember_folder_labels(self):
+        if self.folder_labels_listbox is None:
+            return
+        entries = list(self.folder_labels_listbox.get(0, tk.END))
+        if not entries:
+            messagebox.showinfo("Info", "Scan the folder first to gather labels.")
+            return
+        labels = [entry.rsplit("(", 1)[0].strip() for entry in entries]
+        labels = [label for label in labels if label]
+        if not labels:
+            return
+        self.label_memory.merge_labels(labels)
+        self.log_queue.put(
+            f"Remembered {len(labels)} folder label(s) for the Annotation tab."
+        )
+
+    def _strip_selected_folder_label(self):
+        """Remove every <object> entry whose name matches the selected label
+        from every XML in the loaded directory.
+
+        Empty XML files (no objects left after stripping) are left in place;
+        the user can drop those individually with the existing
+        "Delete Annotation XML" control or scrub them from the Annotation tab.
+        """
+        if not self.dir_var.get():
+            messagebox.showwarning("Warning", "Please select a directory first.")
+            return
+
+        label = self._selected_folder_label()
+        if not label:
+            messagebox.showinfo(
+                "Info",
+                "Select a label in the Folder Labels list (Scan first if needed)."
+            )
+            return
+
+        affected_files = []
+        total_objects = 0
+        for image_file in self.all_image_files:
+            xml_path = self._xml_path_for_image(image_file)
+            if not os.path.exists(xml_path):
+                continue
+            try:
+                root = ET.parse(xml_path).getroot()
+            except ET.ParseError:
+                continue
+            count = sum(
+                1 for obj in root.findall('object')
+                if (obj.findtext('name') or '').strip() == label
+            )
+            if count:
+                affected_files.append((image_file, xml_path, count))
+                total_objects += count
+
+        if not affected_files:
+            messagebox.showinfo("Info", f"No XMLs contain label '{label}'.")
+            return
+
+        confirm = messagebox.askyesno(
+            "Strip Label From Folder",
+            f"Remove '{label}' from {len(affected_files)} XML file(s) "
+            f"({total_objects} object(s) total)?\n\n"
+            "Image files will be left untouched. XMLs with no remaining "
+            "objects will keep their <annotation> wrapper but no <object> "
+            "entries — delete them individually if you want them gone."
+        )
+        if not confirm:
+            return
+
+        modified = 0
+        removed_objects = 0
+        errors = 0
+
+        for image_file, xml_path, _ in affected_files:
+            try:
+                tree = ET.parse(xml_path)
+                root = tree.getroot()
+                to_remove = [
+                    obj for obj in root.findall('object')
+                    if (obj.findtext('name') or '').strip() == label
+                ]
+                if not to_remove:
+                    continue
+                for obj in to_remove:
+                    root.remove(obj)
+                self._write_xml_file(root, xml_path)
+                modified += 1
+                removed_objects += len(to_remove)
+            except Exception as exc:
+                errors += 1
+                self.log_queue.put(f"Could not strip '{label}' from {xml_path}: {exc}")
+
+        self.log_queue.put(
+            f"Stripped '{label}': {removed_objects} object(s) across "
+            f"{modified} XML file(s)."
+            + (f" {errors} error(s)." if errors else "")
+        )
+
+        # Refresh statistics, the folder label list, and any active preview.
+        preserve_file = None
+        if 0 <= self.current_index < len(self.image_files):
+            preserve_file = self.image_files[self.current_index]
+        self.scan_folder_labels()
+        self.apply_filters(preserve_file=preserve_file)
+
+    def _on_labels_changed(self, labels, current_label):
+        """React to LabelMemory updates from another tab or this tab."""
+        try:
+            if (hasattr(self, 'reannotation_label_combo')
+                    and self.reannotation_label_combo is not None
+                    and self.reannotation_label_combo.winfo_exists()):
+                self.reannotation_label_combo['values'] = labels
+        except tk.TclError:
+            pass
 
     def update_statistics(self):
         if not self.dir_var.get():
@@ -789,20 +1004,34 @@ Note: Deleted files are permanently removed. Use with caution!"""
             return False
 
     def _labels_for_reannotation(self, current_file):
-        labels = list(self.label_memory.labels)
-        labels.extend(self._get_image_labels(current_file))
+        """Gather all labels for the re-annotation dropdown.
+
+        Deliberately does NOT persist anything. We only mutate LabelMemory on
+        save so the dropdown ordering stays stable while the user is picking a
+        value. Ordering puts the active current_label first (if any), then the
+        remembered labels, then anything else discovered in XML files.
+        """
+        ordered = []
+
+        def _append(label):
+            if label is None:
+                return
+            text = str(label).strip()
+            if text and text not in ordered:
+                ordered.append(text)
+
+        _append(self.label_memory.current_label)
+        for label in self.label_memory.labels:
+            _append(label)
+        for label in self._get_image_labels(current_file):
+            _append(label)
         for image_file in self.all_image_files:
-            labels.extend(self._get_image_labels(image_file))
+            if image_file == current_file:
+                continue
+            for label in self._get_image_labels(image_file):
+                _append(label)
 
-        unique_labels = self.label_memory.merge_labels(
-            labels,
-            current_label=self.label_memory.current_label
-        )
-        if self.label_memory.current_label in unique_labels:
-            unique_labels.remove(self.label_memory.current_label)
-            unique_labels.insert(0, self.label_memory.current_label)
-
-        return unique_labels
+        return ordered
 
     def reannotate_current(self):
         current_file = self._get_current_file()
@@ -869,7 +1098,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
 
         current_label = self.label_memory.current_label
         if current_label not in label_choices:
-            current_label = label_choices[0]
+            current_label = label_choices[0] if label_choices else ""
 
         self.reannotation_label_var = tk.StringVar(value=current_label)
         ttk.Label(control_frame, text="Label:").pack(side=tk.LEFT, padx=(0, 5))
@@ -877,18 +1106,35 @@ Note: Deleted files are permanently removed. Use with caution!"""
             control_frame,
             textvariable=self.reannotation_label_var,
             values=label_choices,
+            state="readonly",
             width=24
         )
         self.reannotation_label_combo.pack(side=tk.LEFT, padx=(0, 8))
-        self.reannotation_label_combo.bind("<<ComboboxSelected>>", lambda e: self._remember_reannotation_label())
-        self.reannotation_label_combo.bind("<Return>", lambda e: self._remember_reannotation_label())
-        self.reannotation_label_combo.bind("<FocusOut>", lambda e: self._remember_reannotation_label())
+        # NOTE: do not mutate the combobox ``values`` mid-interaction. Replacing
+        # the list while the user is picking an entry causes Tkinter to keep
+        # the previously selected index and re-render the value at that index
+        # from the new list, which was the source of the MAKE_BLACK_BOX ->
+        # dumbbell -> "other" bug.
+
+        self.reannotation_new_label_var = tk.StringVar()
+        ttk.Label(control_frame, text="New:").pack(side=tk.LEFT, padx=(0, 4))
+        new_label_entry = ttk.Entry(
+            control_frame,
+            textvariable=self.reannotation_new_label_var,
+            width=16
+        )
+        new_label_entry.pack(side=tk.LEFT, padx=(0, 4))
+        new_label_entry.bind("<Return>", lambda e: self._add_reannotation_label())
+        ttk.Button(control_frame, text="Add Label",
+                   command=self._add_reannotation_label).pack(side=tk.LEFT, padx=(0, 8))
+
         ttk.Button(control_frame, text="Undo", command=self.undo_reannotation).pack(side=tk.LEFT, padx=3)
         ttk.Button(control_frame, text="Clear All", command=self.clear_reannotation).pack(side=tk.LEFT, padx=3)
         ttk.Button(control_frame, text="Save", command=self.save_reannotation).pack(side=tk.RIGHT, padx=3)
         ttk.Button(control_frame, text="Cancel", command=self.close_reannotation_window).pack(side=tk.RIGHT, padx=3)
 
-        help_text = "Click and drag to draw boxes. Type a new label or choose an existing one."
+        help_text = ("Click and drag to draw boxes. Choose an existing label in the dropdown, "
+                     "or type a new one and press Add Label.")
         ttk.Label(self.annotation_window, text=help_text).pack(fill=tk.X, padx=8, pady=(0, 6))
 
         self.reannotation_annotations = []
@@ -933,7 +1179,6 @@ Note: Deleted files are permanently removed. Use with caution!"""
             return
 
         label = self.reannotation_label_var.get().strip() or "object"
-        self._remember_reannotation_label(label)
         self.reannotation_canvas.itemconfig(self.reannotation_current_rect, outline='green')
         text_id = self.reannotation_canvas.create_text(
             min(x1, x2),
@@ -956,14 +1201,27 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.reannotation_current_rect = None
         self.log_queue.put(f"Added {label} annotation")
 
-    def _remember_reannotation_label(self, label=None):
-        label = (label or self.reannotation_label_var.get()).strip()
-        if not label:
+    def _add_reannotation_label(self):
+        """Add a user-typed label to the re-annotation dropdown.
+
+        Persists it to LabelMemory (so other tabs pick it up immediately) and
+        updates the combo's ``values`` while no selection is being mutated.
+        """
+        new_label = self.reannotation_new_label_var.get().strip()
+        if not new_label:
             return
 
-        labels = self.label_memory.merge_labels([label], current_label=label)
-        if hasattr(self, 'reannotation_label_combo'):
-            self.reannotation_label_combo['values'] = labels
+        self.label_memory.merge_labels([new_label], current_label=new_label)
+        combo = getattr(self, 'reannotation_label_combo', None)
+        if combo is not None and combo.winfo_exists():
+            values = list(combo['values'])
+            if new_label not in values:
+                values.append(new_label)
+                combo['values'] = values
+            self.reannotation_label_var.set(new_label)
+
+        self.reannotation_new_label_var.set("")
+        self.log_queue.put(f"Added label to memory: {new_label}")
 
     def undo_reannotation(self):
         if not self.reannotation_annotations:
