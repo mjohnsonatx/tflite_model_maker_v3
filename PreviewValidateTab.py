@@ -37,7 +37,7 @@ class PreviewValidateTab:
         self.folder_labels_listbox = None
         self.folder_labels_summary_var = None
         self.setup_ui()
-        self.label_memory.subscribe(self._on_labels_changed)
+        self.label_memory.load()
 
     def setup_ui(self):
         # Create main frame

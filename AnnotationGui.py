@@ -89,7 +89,7 @@ class AnnotationTab:
         self.current_label_var.set(self.label_memory.current_label)
         self.update_label_combo(save=False)
 
-        self.label_memory.subscribe(self._on_label_memory_changed)
+        self.label_memory.load()
 
         # Section 3: Annotation Controls
         ttk.Label(main_frame, text="Annotation Controls",
