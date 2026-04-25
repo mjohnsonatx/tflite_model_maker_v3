@@ -1,153 +1,87 @@
 import json
 import os
-import threading
-
-LABEL_MEMORY_FILENAME = "annotation_label_memory.json"
-DEFAULT_LABEL = "kettlebell"
 
 
 class LabelMemory:
-    """Persistent shared store for annotation labels.
-
-    Each tab creates its own LabelMemory instance. When one instance updates the
-    labels, the others reload from disk and notify their UI listeners so every
-    tab stays in sync.
-    """
-
-    _registry = []
-    _registry_lock = threading.Lock()
+    DEFAULT_LABELS = ["kettlebell"]
+    FILE_NAME = "annotation_label_memory.json"
 
     def __init__(self, app_root):
-        self.app_root = app_root
-        self.config_path = os.path.join(app_root, LABEL_MEMORY_FILENAME)
-        self._labels = []
-        self._current_label = ""
-        self._listeners = []
-        self._load()
-        with LabelMemory._registry_lock:
-            LabelMemory._registry.append(self)
+        self.path = os.path.join(app_root, self.FILE_NAME)
+        self.labels = list(self.DEFAULT_LABELS)
+        self.current_label = self.labels[0]
+        self.load()
 
-    @property
-    def labels(self):
-        return list(self._labels)
-
-    @property
-    def current_label(self):
-        return self._current_label
-
-    def subscribe(self, callback):
-        if callable(callback) and callback not in self._listeners:
-            self._listeners.append(callback)
-
-    def unsubscribe(self, callback):
-        if callback in self._listeners:
-            self._listeners.remove(callback)
-
-    def save(self, labels, current_label=None):
-        cleaned = _clean_labels(labels)
-        resolved_current = _normalize_current_label(current_label, cleaned, self._current_label)
-        if resolved_current and resolved_current not in cleaned:
-            cleaned.append(resolved_current)
-        self._labels = cleaned
-        self._current_label = resolved_current
-        self._persist()
-        self._broadcast()
-        return list(self._labels)
-
-    def merge_labels(self, new_labels, current_label=None):
-        combined = list(self._labels)
-        for label in _clean_labels(new_labels):
-            if label not in combined:
-                combined.append(label)
-        resolved_current = _normalize_current_label(current_label, combined, self._current_label)
-        if resolved_current and resolved_current not in combined:
-            combined.append(resolved_current)
-        self._labels = combined
-        self._current_label = resolved_current
-        self._persist()
-        self._broadcast()
-        return list(self._labels)
-
-    def reload(self):
-        previous = (list(self._labels), self._current_label)
-        self._load()
-        if previous != (list(self._labels), self._current_label):
-            self._notify_listeners()
-
-    def _load(self):
-        if not os.path.exists(self.config_path):
-            self._labels = [DEFAULT_LABEL]
-            self._current_label = DEFAULT_LABEL
+    def load(self):
+        if not os.path.exists(self.path):
             return
+
         try:
-            with open(self.config_path, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
-            labels = _clean_labels(data.get("labels") or [])
-            current = str(data.get("current_label") or "").strip()
-            if not labels:
-                labels = [DEFAULT_LABEL]
-            if current not in labels:
-                current = labels[0]
-            self._labels = labels
-            self._current_label = current
-        except (OSError, ValueError, json.JSONDecodeError):
-            self._labels = [DEFAULT_LABEL]
-            self._current_label = DEFAULT_LABEL
+            with open(self.path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+        except (OSError, json.JSONDecodeError):
+            return
 
-    def _persist(self):
-        try:
-            with open(self.config_path, "w", encoding="utf-8") as handle:
-                json.dump(
-                    {
-                        "labels": list(self._labels),
-                        "current_label": self._current_label,
-                    },
-                    handle,
-                    indent=2,
-                )
-        except OSError:
-            pass
+        labels = self._normalize_labels(data.get('labels', []))
+        current_label = str(data.get('current_label', '')).strip()
 
-    def _notify_listeners(self):
-        labels = self.labels
-        current = self._current_label
-        for listener in list(self._listeners):
-            try:
-                listener(labels, current)
-            except Exception:
-                pass
+        if labels:
+            self.labels = labels
 
-    def _broadcast(self):
-        self._notify_listeners()
-        with LabelMemory._registry_lock:
-            peers = [
-                instance for instance in LabelMemory._registry if instance is not self
-            ]
-        for peer in peers:
-            try:
-                peer.reload()
-            except Exception:
-                pass
+        if current_label:
+            self.current_label = current_label
+            if current_label not in self.labels:
+                self.labels.insert(0, current_label)
+        elif self.current_label not in self.labels:
+            self.current_label = self.labels[0]
 
+    def save(self, labels=None, current_label=None):
+        if labels is not None:
+            self.labels = self._normalize_labels(labels)
 
-def _clean_labels(labels):
-    seen = []
-    for label in labels or []:
-        if label is None:
-            continue
-        text = str(label).strip()
-        if text and text not in seen:
-            seen.append(text)
-    return seen
+        if current_label is not None:
+            current_label = str(current_label).strip()
+            if current_label:
+                self.current_label = current_label
 
+        if not self.labels:
+            self.labels = list(self.DEFAULT_LABELS)
 
-def _normalize_current_label(requested, labels, fallback):
-    if requested is not None:
-        text = str(requested).strip()
-        if text:
-            return text
-    if fallback and fallback in labels:
-        return fallback
-    if labels:
-        return labels[0]
-    return ""
+        if current_label is not None and not current_label:
+            self.current_label = self.labels[0]
+        elif self.current_label not in self.labels:
+            self.labels.insert(0, self.current_label)
+
+        data = {
+            'labels': self.labels,
+            'current_label': self.current_label,
+        }
+
+        temp_path = f"{self.path}.tmp"
+        with open(temp_path, 'w', encoding='utf-8') as file:
+            json.dump(data, file, indent=2)
+            file.write('\n')
+        os.replace(temp_path, self.path)
+
+    def merge_labels(self, labels, current_label=None):
+        merged = list(self.labels)
+        for label in self._normalize_labels(labels):
+            if label not in merged:
+                merged.append(label)
+
+        self.save(merged, current_label=current_label)
+        return list(self.labels)
+
+    @staticmethod
+    def _normalize_labels(labels):
+        normalized = []
+        seen = set()
+
+        for label in labels:
+            label = str(label).strip()
+            if not label or label in seen:
+                continue
+            normalized.append(label)
+            seen.add(label)
+
+        return normalized
