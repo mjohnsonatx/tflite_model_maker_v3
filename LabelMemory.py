@@ -72,6 +72,26 @@ class LabelMemory:
         self.save(merged, current_label=current_label)
         return list(self.labels)
 
+    def remove_labels(self, labels):
+        labels_to_remove = set(self._normalize_labels(labels))
+        if not labels_to_remove:
+            return list(self.labels)
+
+        remaining = [
+            label for label in self.labels
+            if label not in labels_to_remove
+        ]
+
+        if not remaining:
+            remaining = list(self.DEFAULT_LABELS)
+
+        current_label = self.current_label
+        if current_label in labels_to_remove or current_label not in remaining:
+            current_label = remaining[0]
+
+        self.save(remaining, current_label=current_label)
+        return list(self.labels)
+
     @staticmethod
     def _normalize_labels(labels):
         normalized = []
