@@ -617,7 +617,7 @@ def create_comparison_dashboard(datasets, temp_dir):
         <div class="plot-container">
             <div class="plot-title">🎯 Evaluation Metrics Comparison</div>
             <div class="plot-description">
-                Compare validation and test performance across all metrics. Lines are stacked vertically for better visibility.
+                Compare validation and test_CLEAN performance across all metrics. Lines are stacked vertically for better visibility.
             </div>
             {eval_html}
             {eval_table_html}
@@ -761,8 +761,8 @@ def visualize_training(log_filepath=None, spec_filepath=None, compare_mode=False
             print(f"✅ Found {len(metrics['epoch'])} epochs of training data")
             if eval_metrics['validation']:
                 print(f"✅ Found validation metrics")
-            if eval_metrics['test']:
-                print(f"✅ Found test metrics")
+            if eval_metrics['test_CLEAN']:
+                print(f"✅ Found test_CLEAN metrics")
             print("\n🔄 Generating visualizations...")
 
             # Create temp directory

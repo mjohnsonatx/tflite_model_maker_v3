@@ -7,7 +7,7 @@ ROOT_DIR = Path("db_final_data")
 
 # TODO need to build filter the filter out the kb data that does not have xmls
 # def update_xml_files_in_place(root_dir):
-#     subdirectories = ['train', 'test', 'valid']
+#     subdirectories = ['train', 'test_CLEAN', 'valid']
 #
 #     for sub in subdirectories:
 #         input_dir = os.path.join(root_dir, sub)
@@ -44,7 +44,7 @@ ROOT_DIR = Path("db_final_data")
 #                     print(f"No updates needed for: {xml_path}")
 
 def update_xml_files_in_place(root_dir: Path):
-    subdirectories = ["train", "test", "valid"]
+    subdirectories = ["train", "test_CLEAN", "valid"]
 
     for sub in subdirectories:
         input_dir = root_dir / sub

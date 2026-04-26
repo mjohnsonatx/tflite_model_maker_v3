@@ -24,7 +24,7 @@ def parse_training_log(log_file):
 
     eval_metrics = {
         'validation': {},
-        'test': {}
+        'test_CLEAN': {}
     }
 
     epoch_pattern = r'Epoch (\d+)/(\d+)'
@@ -39,7 +39,7 @@ def parse_training_log(log_file):
     current_epoch = None
     epoch_data_buffer = {}
 
-    # Parse validation and test metrics
+    # Parse validation and test_CLEAN metrics
     val_match = re.search(val_metrics_pattern, content, re.DOTALL)
     if val_match:
         try:
@@ -50,7 +50,7 @@ def parse_training_log(log_file):
     test_match = re.search(test_metrics_pattern, content, re.DOTALL)
     if test_match:
         try:
-            eval_metrics['test'] = ast.literal_eval(test_match.group(1))
+            eval_metrics['test_CLEAN'] = ast.literal_eval(test_match.group(1))
         except:
             pass
 

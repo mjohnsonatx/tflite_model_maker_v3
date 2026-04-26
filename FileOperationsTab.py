@@ -1196,7 +1196,7 @@ class FileOperationsTab:
 
             # Create output directories
             train_dir = os.path.join(output_base, "train")
-            test_dir = os.path.join(output_base, "test")
+            test_dir = os.path.join(output_base, "test_CLEAN")
             valid_dir = os.path.join(output_base, "valid")
 
             os.makedirs(train_dir, exist_ok=True)

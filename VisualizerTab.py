@@ -588,7 +588,7 @@ class VisualizerTab:
             <div class="content-container">
                 <div class="section-title">🎯 Evaluation Metrics Comparison</div>
                 <div class="section-description">
-                    Compare validation and test performance across all metrics. Detailed breakdown of AP/AR scores.
+                    Compare validation and test_CLEAN performance across all metrics. Detailed breakdown of AP/AR scores.
                 </div>
                 {eval_table_html}
             </div>
@@ -611,8 +611,8 @@ class VisualizerTab:
         if 'validation' in eval_metrics and eval_metrics['validation']:
             all_val_values = eval_metrics['validation']
 
-        if 'test' in eval_metrics and eval_metrics['test']:
-            all_test_values = eval_metrics['test']
+        if 'test_CLEAN' in eval_metrics and eval_metrics['test_CLEAN']:
+            all_test_values = eval_metrics['test_CLEAN']
 
         # Create table data structure expected by create_evaluation_results_table
         table_data = [{'name': 'Current Model', 'val_ap': all_val_values.get('AP', 0),
@@ -629,7 +629,7 @@ class VisualizerTab:
         for dataset in datasets:
             eval_metrics = dataset['eval_metrics']
             val_ap = eval_metrics.get('validation', {}).get('AP', 0)
-            test_ap = eval_metrics.get('test', {}).get('AP', 0)
+            test_ap = eval_metrics.get('test_CLEAN', {}).get('AP', 0)
 
             table_data.append({
                 'name': dataset['name'],
@@ -644,9 +644,9 @@ class VisualizerTab:
                         all_val_values[key] = []
                     all_val_values[key].append(value if value is not None else 0)
 
-            # Collect all test metrics for detailed comparison
-            if 'test' in eval_metrics:
-                for key, value in eval_metrics['test'].items():
+            # Collect all test_CLEAN metrics for detailed comparison
+            if 'test_CLEAN' in eval_metrics:
+                for key, value in eval_metrics['test_CLEAN'].items():
                     if key not in all_test_values:
                         all_test_values[key] = []
                     all_test_values[key].append(value if value is not None else 0)
@@ -1250,14 +1250,14 @@ class VisualizerTab:
 #             self._create_metrics_table(eval_frame, eval_metrics['validation'], "Validation")
 #
 #         # Test metrics
-#         if 'test' in eval_metrics and eval_metrics['test']:
+#         if 'test_CLEAN' in eval_metrics and eval_metrics['test_CLEAN']:
 #             if 'validation' in eval_metrics and eval_metrics['validation']:
 #                 ttk.Separator(eval_frame, orient='horizontal').pack(fill="x", pady=(10, 10))
 #
 #             test_title = ttk.Label(eval_frame, text="Test Results:", font=('TkDefaultFont', 10, 'bold'))
 #             test_title.pack(anchor=tk.W, pady=(0, 5))
 #
-#             self._create_metrics_table(eval_frame, eval_metrics['test'], "Test")
+#             self._create_metrics_table(eval_frame, eval_metrics['test_CLEAN'], "Test")
 #
 #     def _create_metrics_table(self, parent: ttk.Frame, metrics: Dict[str, Any], prefix: str) -> None:
 #         """Create a table for AP/AR metrics."""
@@ -1329,9 +1329,9 @@ class VisualizerTab:
 #             stats = data['stats']
 #             eval_metrics = data['eval_metrics']
 #
-#             # Get validation and test AP values
+#             # Get validation and test_CLEAN AP values
 #             val_ap = eval_metrics.get('validation', {}).get('AP', 0.0)
-#             test_ap = eval_metrics.get('test', {}).get('AP', 0.0)
+#             test_ap = eval_metrics.get('test_CLEAN', {}).get('AP', 0.0)
 #             best_epoch = stats.get('best_epoch', 'N/A')
 #             best_val_loss = stats.get('best_val_loss', 0.0)
 #

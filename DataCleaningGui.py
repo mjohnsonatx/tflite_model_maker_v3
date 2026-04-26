@@ -1595,7 +1595,7 @@ class DataCleaningTab:
     def sync_xml_filenames(self) -> None:
         """
         Synchronize XML filename and path fields with actual image files.
-        Process train, valid, and test folders if they exist.
+        Process train, valid, and test_CLEAN folders if they exist.
         """
         try:
             source_dir = self.source_dir_var.get()
@@ -1604,7 +1604,7 @@ class DataCleaningTab:
                 return
 
             # Define folders to process
-            folders_to_process: List[str] = ['train', 'valid', 'test']
+            folders_to_process: List[str] = ['train', 'valid', 'test_CLEAN']
 
             total_fixed = 0
             total_skipped = 0

@@ -188,7 +188,7 @@ def augment_and_save(source_dir, dest_dir, num_images):
 
 # Example usage
 if __name__ == "__main__":
-    source_directory = 'Kettlebell Data/test'
+    source_directory = 'Kettlebell Data/test_CLEAN'
     destination_directory = 'KB AUGMENT'
     number_of_images_to_augment = 1000
 

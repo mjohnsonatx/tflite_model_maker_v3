@@ -50,7 +50,7 @@ EXPORT_BASE_DIR_DUMBBELL = 'dumbbell_models'
 
 TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
-TEST_DIR = os.path.join(DATA_DIR, 'test')
+TEST_DIR = os.path.join(DATA_DIR, 'test_CLEAN')
 
 CACHE_DIR = r"D:\tflite_cache"
 

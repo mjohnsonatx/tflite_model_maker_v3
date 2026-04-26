@@ -29,7 +29,7 @@ def _check_model_completion(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         with open(config['path'], 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # Look for validation or test metrics patterns
+        # Look for validation or test_CLEAN metrics patterns
         has_validation = 'Validation metrics:' in content
         has_test = 'Test metrics:' in content
 
@@ -63,7 +63,7 @@ def _parse_single_model(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         metrics, eval_metrics = parse_training_log(config['path'])
 
         # Check if model finished training (has evaluation metrics)
-        if not eval_metrics['validation'] and not eval_metrics['test']:
+        if not eval_metrics['validation'] and not eval_metrics['test_CLEAN']:
             return {
                 'success': False,
                 'name': config['name'],
@@ -420,7 +420,7 @@ class ComparisonTableOnly:
 
             for dataset in self.datasets:
                 val_data = dataset['eval_metrics']['validation']
-                test_data = dataset['eval_metrics']['test']
+                test_data = dataset['eval_metrics']['test_CLEAN']
 
                 # Try to find the value using both short name and mapped long name
                 val_value = val_data.get(category)
@@ -446,7 +446,7 @@ class ComparisonTableOnly:
                 else:
                     table_data[f"{dataset['name']} (Val)"].append("N/A")
 
-                # Add test value
+                # Add test_CLEAN value
                 if test_value is not None:
                     table_data[f"{dataset['name']} (Test)"].append(f"{test_value:.3f}")
                     all_test_values.append(test_value)
@@ -983,7 +983,7 @@ class ComparisonTableOnly:
 #                 metrics, eval_metrics = parse_training_log(config['path'])
 #
 #                 # Check if model finished training (has evaluation metrics)
-#                 if not eval_metrics['validation'] and not eval_metrics['test']:
+#                 if not eval_metrics['validation'] and not eval_metrics['test_CLEAN']:
 #                     self.failed_models.append(config['name'])
 #                     print(f"⚠️ Skipping {config['name']}: No evaluation metrics (training incomplete)")
 #                     continue
@@ -1256,7 +1256,7 @@ class ComparisonTableOnly:
 #
 #             for dataset in self.datasets:
 #                 val_data = dataset['eval_metrics']['validation']
-#                 test_data = dataset['eval_metrics']['test']
+#                 test_data = dataset['eval_metrics']['test_CLEAN']
 #
 #                 # Try to find the value using both short name and mapped long name
 #                 val_value = val_data.get(category)
@@ -1282,7 +1282,7 @@ class ComparisonTableOnly:
 #                 else:
 #                     table_data[f"{dataset['name']} (Val)"].append("N/A")
 #
-#                 # Add test value
+#                 # Add test_CLEAN value
 #                 if test_value is not None:
 #                     table_data[f"{dataset['name']} (Test)"].append(f"{test_value:.3f}")
 #                     all_test_values.append(test_value)
@@ -1713,7 +1713,7 @@ class ComparisonTableOnly:
 #                 _, eval_metrics = parse_training_log(config['path'])
 #
 #                 # Check if model has evaluation metrics (completed training)
-#                 if eval_metrics['validation'] or eval_metrics['test']:
+#                 if eval_metrics['validation'] or eval_metrics['test_CLEAN']:
 #                     completed_models.append(config)
 #
 #                 # Stop when we have enough completed models

@@ -35,9 +35,9 @@ def calculate_statistics(metrics, eval_metrics):
         stats['val_ap50'] = eval_metrics['validation'].get('AP50', 0)
         stats['val_ap75'] = eval_metrics['validation'].get('AP75', 0)
 
-    if eval_metrics['test']:
-        stats['test_ap'] = eval_metrics['test'].get('AP', 0)
-        stats['test_ap50'] = eval_metrics['test'].get('AP50', 0)
-        stats['test_ap75'] = eval_metrics['test'].get('AP75', 0)
+    if eval_metrics['test_CLEAN']:
+        stats['test_ap'] = eval_metrics['test_CLEAN'].get('AP', 0)
+        stats['test_ap50'] = eval_metrics['test_CLEAN'].get('AP50', 0)
+        stats['test_ap75'] = eval_metrics['test_CLEAN'].get('AP75', 0)
 
     return stats

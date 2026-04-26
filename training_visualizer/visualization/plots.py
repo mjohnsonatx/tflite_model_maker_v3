@@ -11,7 +11,7 @@ def create_evaluation_metrics_plot(eval_metrics, full_size=False):
                   'ARmax1', 'ARmax10', 'ARmax100', 'ARs', 'ARm', 'ARl']
 
     val_values = [eval_metrics['validation'].get(cat, 0) for cat in categories]
-    test_values = [eval_metrics['test'].get(cat, 0) for cat in categories]
+    test_values = [eval_metrics['test_CLEAN'].get(cat, 0) for cat in categories]
 
     # Create subplots: 2 rows (one for each dataset), 1 column
     fig = make_subplots(

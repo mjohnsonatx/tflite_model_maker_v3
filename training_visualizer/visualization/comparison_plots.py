@@ -30,7 +30,7 @@ def create_comparison_evaluation_plot(datasets, full_size=False):
         eval_metrics = dataset['eval_metrics']
 
         val_values = [eval_metrics['validation'].get(cat, 0) for cat in categories]
-        test_values = [eval_metrics['test'].get(cat, 0) for cat in categories]
+        test_values = [eval_metrics['test_CLEAN'].get(cat, 0) for cat in categories]
 
         fig.add_trace(
             go.Scatter(
@@ -83,7 +83,7 @@ def create_comparison_evaluation_plot(datasets, full_size=False):
 
         for cat in categories:
             val_value = dataset['eval_metrics']['validation'].get(cat, 0)
-            test_value = dataset['eval_metrics']['test'].get(cat, 0)
+            test_value = dataset['eval_metrics']['test_CLEAN'].get(cat, 0)
             table_data[val_key].append(f'{val_value:.3f}')
             table_data[test_key].append(f'{test_value:.3f}')
 

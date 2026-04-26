@@ -17,11 +17,11 @@ from tflite_model_maker.object_detector import EfficientDetSpec
 # --- Paths ---
 EXPORT_DIR = "kettlebell_models"
 SAVED_MODEL_DIR = f"{EXPORT_DIR}/saved_model"
-TEST_DIR = "FINAL_KB_DATA/test"
+TEST_DIR = "FINAL_KB_DATA/test_CLEAN"
 KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
 BATCH_SIZE = 4
 
-# --- Rebuild test dataset ---
+# --- Rebuild test_CLEAN dataset ---
 test_data = object_detector.DataLoader.from_pascal_voc(
     images_dir=TEST_DIR,
     annotations_dir=TEST_DIR,
@@ -70,7 +70,7 @@ print("Evaluation metrics:", metrics)
 #     return output
 #
 #
-# # Evaluate the model using the test data
+# # Evaluate the model using the test_CLEAN data
 # def evaluate_tflite_model(test_data, interpreter):
 #     num_correct = 0
 #     num_total = 0
@@ -95,6 +95,6 @@ print("Evaluation metrics:", metrics)
 #     return accuracy
 #
 #
-# # Assuming 'test' is your test dataset
-# accuracy = evaluate_tflite_model('FINAL_KB_DATA/test', interpreter)
+# # Assuming 'test_CLEAN' is your test_CLEAN dataset
+# accuracy = evaluate_tflite_model('FINAL_KB_DATA/test_CLEAN', interpreter)
 # print(f"Re-evaluated accuracy of the TFLite model: {accuracy:.4f}")
