@@ -25,6 +25,7 @@ class TFLiteModelMakerGUI:
         self.collapsed_height = 35
         self.maximized_log = False
         self.previous_sash_pos = None
+        self.previous_log_sash_pos = None
 
         self.setup_ui()
         self.process_log_queue()
@@ -337,7 +338,13 @@ class TFLiteModelMakerGUI:
     def toggle_log_panel(self):
         """Toggle the log panel visibility."""
         try:
+            total_height = self.main_paned.winfo_height()
             if self.log_panel_visible:
+                try:
+                    self.previous_log_sash_pos = self.main_paned.sashpos(0)
+                except Exception:
+                    self.previous_log_sash_pos = None
+
                 # Collapse the log panel
                 self.log_panel_visible = False
                 self.toggle_btn.configure(text=self.expand_symbol)
@@ -348,6 +355,9 @@ class TFLiteModelMakerGUI:
 
                 # Configure the log container to minimum height
                 self.log_container.configure(height=self.collapsed_height)
+
+                if total_height > self.collapsed_height:
+                    self.main_paned.sashpos(0, total_height - self.collapsed_height)
 
                 # Update the paned window weights to give more space to notebook
                 self.main_paned.paneconfig(self.notebook_container, weight=10)
@@ -364,6 +374,11 @@ class TFLiteModelMakerGUI:
 
                 # Restore the log container height
                 self.log_container.configure(height=self.log_panel_height)
+
+                if self.previous_log_sash_pos is not None:
+                    self.main_paned.sashpos(0, self.previous_log_sash_pos)
+                elif total_height > self.log_panel_height:
+                    self.main_paned.sashpos(0, total_height - self.log_panel_height)
 
                 # Restore normal weights
                 self.main_paned.paneconfig(self.notebook_container, weight=3)

@@ -27,6 +27,7 @@ class PreviewValidateTab:
         self._suppress_preview_position_capture = False
         self.current_preview_boxes = []
         self.annotation_listbox = None
+        self._syncing_annotation_selection = False
         self.annotation_window = None
         self.reannotation_image_path = None
         self.reannotation_image = None
@@ -43,6 +44,7 @@ class PreviewValidateTab:
         self.reannotation_drag_mode = None
         self.reannotation_drag_start = None
         self.reannotation_guideline_ids = []
+        self.reannotation_autosave = False
         self.folder_labels_listbox = None
         self.folder_labels_summary_var = None
         self.setup_ui()
@@ -164,16 +166,16 @@ class PreviewValidateTab:
         self.folder_labels_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E))
         labels_scroll.config(command=self.folder_labels_listbox.yview)
         self.folder_labels_listbox.bind(
-            "<<ListboxSelect>>",
-            lambda e: self._apply_folder_label_filter()
-        )
-        self.folder_labels_listbox.bind(
             "<Delete>",
             lambda e: (self._strip_selected_folder_label(), "break")[1]
         )
         self.folder_labels_listbox.bind(
             "<BackSpace>",
             lambda e: (self._strip_selected_folder_label(), "break")[1]
+        )
+        self.folder_labels_listbox.bind(
+            "<F2>",
+            lambda e: (self._rename_selected_folder_labels(), "break")[1]
         )
 
         folder_labels_buttons = ttk.Frame(folder_labels_frame)
@@ -187,6 +189,8 @@ class PreviewValidateTab:
                    command=self._remember_folder_labels).pack(side=tk.LEFT, padx=5)
         ttk.Button(folder_labels_buttons, text="Forget Selected Labels",
                    command=self._forget_selected_folder_labels).pack(side=tk.LEFT, padx=5)
+        ttk.Button(folder_labels_buttons, text="Rename Selected in Folder",
+                   command=self._rename_selected_folder_labels).pack(side=tk.LEFT, padx=5)
         ttk.Button(folder_labels_buttons, text="Strip Selected from Folder",
                    command=self._strip_selected_folder_label).pack(side=tk.LEFT, padx=5)
 
@@ -218,6 +222,7 @@ class PreviewValidateTab:
 
         info_text = """Keyboard shortcuts during preview:
 - Arrow Left/Right or A/D: Navigate between images
+- Drag box edges/corners in the preview image: Edit and auto-save boxes
 - Delete/Backspace: Delete selected annotation(s)
 - F2 or Enter in the annotation list: Rename selected annotation(s)
 - Ctrl+Delete or E: Delete current image and its XML file
@@ -482,6 +487,113 @@ Note: Deleted files are permanently removed. Use with caution!"""
             f"{', '.join(labels)}"
         )
 
+    def _rename_selected_folder_labels(self):
+        if not self.dir_var.get():
+            messagebox.showwarning("Warning", "Please select a directory first.")
+            return
+
+        labels = self._selected_folder_labels()
+        if not labels:
+            messagebox.showinfo("Info", "Select one or more labels in the Folder Labels list first.")
+            return
+
+        initial_label = labels[0]
+        new_label = simpledialog.askstring(
+            "Rename Folder Label",
+            f"Rename {len(labels)} selected label(s) to:",
+            initialvalue=initial_label,
+            parent=self.parent.winfo_toplevel()
+        )
+        if new_label is None:
+            return
+        new_label = new_label.strip()
+        if not new_label:
+            messagebox.showwarning("Warning", "Label cannot be blank.")
+            return
+
+        selected_labels = set(labels)
+        affected_files = []
+        total_objects = 0
+        label_totals = {label: 0 for label in labels}
+
+        for image_file in self.all_image_files:
+            xml_path = self._xml_path_for_image(image_file)
+            if not os.path.exists(xml_path):
+                continue
+            try:
+                root = ET.parse(xml_path).getroot()
+            except ET.ParseError:
+                continue
+            file_counts = {}
+            for obj in root.findall('object'):
+                label = (obj.findtext('name') or '').strip()
+                if label in selected_labels:
+                    file_counts[label] = file_counts.get(label, 0) + 1
+            if file_counts:
+                count = sum(file_counts.values())
+                affected_files.append((image_file, xml_path, count))
+                total_objects += count
+                for label, label_count in file_counts.items():
+                    label_totals[label] += label_count
+
+        if not affected_files:
+            messagebox.showinfo("Info", "No XMLs contain the selected label(s).")
+            return
+
+        label_summary = ", ".join(
+            f"{label}: {label_totals[label]}"
+            for label in labels
+            if label_totals.get(label)
+        )
+        confirm = messagebox.askyesno(
+            "Rename Labels In Folder",
+            f"Rename selected label(s) to '{new_label}' in {len(affected_files)} XML file(s) "
+            f"({total_objects} object(s) total)?\n\n{label_summary}"
+        )
+        if not confirm:
+            return
+
+        modified = 0
+        renamed_objects = 0
+        errors = 0
+
+        for _, xml_path, _ in affected_files:
+            try:
+                tree = ET.parse(xml_path)
+                root = tree.getroot()
+                changed = 0
+                for obj in root.findall('object'):
+                    name_node = obj.find('name')
+                    old_label = (name_node.text if name_node is not None else '').strip()
+                    if old_label not in selected_labels:
+                        continue
+                    if name_node is None:
+                        name_node = ET.SubElement(obj, 'name')
+                    name_node.text = new_label
+                    changed += 1
+
+                if changed:
+                    self._write_xml_file(root, xml_path)
+                    modified += 1
+                    renamed_objects += changed
+            except Exception as exc:
+                errors += 1
+                self.log_queue.put(f"Could not rename selected labels in {xml_path}: {exc}")
+
+        self.label_memory.merge_labels([new_label], current_label=new_label)
+        self.log_queue.put(
+            f"Renamed folder labels ({label_summary}) to '{new_label}': "
+            f"{renamed_objects} object(s) across {modified} XML file(s)."
+            + (f" {errors} error(s)." if errors else "")
+        )
+
+        preserve_file = None
+        if 0 <= self.current_index < len(self.image_files):
+            preserve_file = self.image_files[self.current_index]
+        self.scan_folder_labels()
+        self.label_filter_var.set(new_label)
+        self.apply_filters(preserve_file=preserve_file)
+
     def _strip_selected_folder_label(self):
         """Remove selected label objects from every XML in the loaded directory."""
         if not self.dir_var.get():
@@ -688,6 +800,22 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self.preview_scroll_canvas.yview_scroll(1, "units")
         return "break"
 
+    def _delete_current_key(self, event=None):
+        self.delete_current()
+        return "break"
+
+    def _delete_current_annotation_file_key(self, event=None):
+        self.delete_current_annotation_file()
+        return "break"
+
+    def _bind_preview_shortcuts(self, widget):
+        try:
+            widget.bind('e', self._delete_current_key)
+            widget.bind('x', self._delete_current_annotation_file_key)
+            widget.bind('<Control-Delete>', self._delete_current_key)
+        except tk.TclError:
+            pass
+
     def _fit_preview_window_to_content(self):
         if not self.preview_window or not self.preview_content_frame:
             return
@@ -708,6 +836,57 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self.preview_window.geometry(geometry)
         except tk.TclError:
             pass
+
+    def _install_editable_preview_canvas(self, image_path, image, photo, scale, display_size, display_boxes):
+        self.reannotation_image_path = image_path
+        self.reannotation_image = image
+        self.reannotation_scale = scale
+        self.reannotation_display_size = display_size
+        self.reannotation_autosave = True
+        self.reannotation_photo_image = photo
+        self.reannotation_canvas = tk.Canvas(
+            self.preview_content_frame,
+            width=display_size[0],
+            height=display_size[1],
+            cursor="crosshair"
+        )
+        self.reannotation_canvas.pack()
+        self.reannotation_canvas.create_image(0, 0, anchor=tk.NW, image=self.reannotation_photo_image)
+
+        current_label = self.label_memory.current_label
+        if display_boxes:
+            current_label = display_boxes[0].get('label', current_label)
+        self.reannotation_label_var = tk.StringVar(value=current_label)
+        self.reannotation_annotations = []
+        self.reannotation_rect_ids = []
+        self.reannotation_text_ids = []
+        self.reannotation_current_rect = None
+        self.reannotation_start_x = None
+        self.reannotation_start_y = None
+        self.reannotation_active_index = None
+        self.reannotation_drag_mode = None
+        self.reannotation_drag_start = None
+        self.reannotation_guideline_ids = []
+
+        self.reannotation_canvas.bind("<ButtonPress-1>", self._on_reannotation_mouse_down)
+        self.reannotation_canvas.bind("<B1-Motion>", self._on_reannotation_mouse_drag)
+        self.reannotation_canvas.bind("<ButtonRelease-1>", self._on_reannotation_mouse_up)
+        self.reannotation_canvas.bind("<Motion>", self._on_reannotation_mouse_move)
+        self.reannotation_canvas.bind("<Leave>", lambda e: self._hide_reannotation_guidelines())
+        self.preview_window.bind('<Control-s>', lambda e: self._autosave_reannotation_if_needed(force=True))
+        self._bind_preview_shortcuts(self.reannotation_canvas)
+
+        for box in display_boxes:
+            self._add_reannotation_box(
+                box['xmin'],
+                box['ymin'],
+                box['xmax'],
+                box['ymax'],
+                box['label'],
+                log=False
+            )
+        if display_boxes:
+            self._select_reannotation_index(0)
 
     def create_preview_window(self, image_path):
         # Close previous window if exists
@@ -779,6 +958,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
         image_file = os.path.basename(image_path)
         xml_path = self._xml_path_for_image(image_file)
         boxes = []
+        display_boxes = []
 
         if os.path.exists(xml_path):
             try:
@@ -789,7 +969,6 @@ Note: Deleted files are permanently removed. Use with caution!"""
                     annotation_size or (w, h),
                     (display_width, display_height)
                 )
-                self.draw_boxes(display_image, display_boxes)
             except Exception as exc:
                 self.current_preview_boxes = []
                 self.log_queue.put(f"Could not preview {Path(xml_path).name}: {exc}")
@@ -803,10 +982,14 @@ Note: Deleted files are permanently removed. Use with caution!"""
         pil_image = Image.fromarray(image_rgb)
         photo = ImageTk.PhotoImage(pil_image)
 
-        # Display image
-        label = tk.Label(self.preview_content_frame, image=photo)
-        label.image = photo  # Keep a reference
-        label.pack()
+        self._install_editable_preview_canvas(
+            image_path,
+            image,
+            photo,
+            scale,
+            (display_width, display_height),
+            display_boxes
+        )
 
         # Status bar
         status_frame = ttk.Frame(self.preview_content_frame)
@@ -835,9 +1018,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.preview_window.bind('<Delete>', self._delete_selected_annotation_key)
         self.preview_window.bind('<BackSpace>', self._delete_selected_annotation_key)
         self.preview_window.bind('<F2>', self._rename_selected_annotation_key)
-        self.preview_window.bind('<Control-Delete>', lambda e: self.delete_current())
-        self.preview_window.bind('e', lambda e: self.delete_current())
-        self.preview_window.bind('x', lambda e: self.delete_current_annotation_file())
+        self._bind_preview_shortcuts(self.preview_window)
         self.preview_window.bind('r', lambda e: self.reannotate_current())
         self.preview_window.bind('<space>', lambda e: self.toggle_auto_advance())
         self.preview_window.bind('<Escape>', lambda e: self.stop_preview())
@@ -870,8 +1051,37 @@ Note: Deleted files are permanently removed. Use with caution!"""
                    command=self.next_image).pack(side=tk.LEFT, padx=3)
         ttk.Button(controls_frame, text="Delete Annotation XML",
                    command=self.delete_current_annotation_file).pack(side=tk.LEFT, padx=3)
-        ttk.Button(controls_frame, text="Edit Boxes",
+        ttk.Button(controls_frame, text="Open Editor",
                    command=self.reannotate_current).pack(side=tk.LEFT, padx=3)
+        current_file = self._get_current_file()
+        label_choices = self._labels_for_preview_dropdown(current_file)
+        if not getattr(self, 'reannotation_label_var', None):
+            first_label = label_choices[0] if label_choices else "object"
+            self.reannotation_label_var = tk.StringVar(value=first_label)
+
+        ttk.Label(controls_frame, text="Draw label:").pack(side=tk.LEFT, padx=(12, 4))
+        self.reannotation_label_combo = ttk.Combobox(
+            controls_frame,
+            textvariable=self.reannotation_label_var,
+            values=label_choices,
+            state="readonly",
+            width=20
+        )
+        self.reannotation_label_combo.pack(side=tk.LEFT, padx=(0, 4))
+
+        self.reannotation_new_label_var = tk.StringVar()
+        new_label_entry = ttk.Entry(
+            controls_frame,
+            textvariable=self.reannotation_new_label_var,
+            width=14
+        )
+        new_label_entry.pack(side=tk.LEFT, padx=(0, 4))
+        new_label_entry.bind("<Return>", lambda e: self._add_reannotation_label())
+        ttk.Button(
+            controls_frame,
+            text="Add",
+            command=self._add_reannotation_label
+        ).pack(side=tk.LEFT, padx=(0, 8))
         ttk.Checkbutton(
             controls_frame,
             text="Lock Position",
@@ -916,6 +1126,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.annotation_listbox.bind("<Return>", self._rename_selected_annotation_key)
         self.annotation_listbox.bind("<Double-Button-1>", self._rename_selected_annotation_key)
         self.annotation_listbox.bind("<Control-a>", self._select_all_annotations_key)
+        self.annotation_listbox.bind("<<ListboxSelect>>", self._sync_canvas_selection_from_listbox)
+        self._bind_preview_shortcuts(self.annotation_listbox)
 
         annotation_button_frame = ttk.Frame(annotation_frame)
         annotation_button_frame.pack(fill=tk.X, pady=(5, 0))
@@ -1132,6 +1344,27 @@ Note: Deleted files are permanently removed. Use with caution!"""
             for index in self._selected_annotation_indices()
         ]
 
+    def _refresh_annotation_listbox_entries(self):
+        if self.annotation_listbox is None:
+            return
+        try:
+            self._syncing_annotation_selection = True
+            self.annotation_listbox.delete(0, tk.END)
+            for index, box in enumerate(self.current_preview_boxes, start=1):
+                self.annotation_listbox.insert(
+                    tk.END,
+                    f"{index}. {box['label']} ({int(box['xmin'])}, {int(box['ymin'])}) "
+                    f"to ({int(box['xmax'])}, {int(box['ymax'])})"
+                )
+            active_index = self.reannotation_active_index
+            if active_index is not None and active_index < len(self.current_preview_boxes):
+                self.annotation_listbox.selection_set(active_index)
+                self.annotation_listbox.see(active_index)
+        except tk.TclError:
+            pass
+        finally:
+            self._syncing_annotation_selection = False
+
     def _delete_selected_annotation_key(self, event=None):
         if self.annotation_listbox is not None and self.annotation_listbox.curselection():
             self.delete_selected_annotation()
@@ -1147,6 +1380,16 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self.annotation_listbox.selection_set(0, tk.END)
         return "break"
 
+    def _sync_canvas_selection_from_listbox(self, event=None):
+        if self._syncing_annotation_selection:
+            return
+        indices = self._selected_annotation_indices()
+        if len(indices) != 1:
+            return
+        index = indices[0]
+        if 0 <= index < len(self.reannotation_annotations):
+            self._select_reannotation_index(index)
+
     def delete_selected_annotation(self):
         current_file = self._get_current_file()
         if not current_file:
@@ -1156,7 +1399,11 @@ Note: Deleted files are permanently removed. Use with caution!"""
             messagebox.showinfo("Info", "There are no annotations to delete.")
             return
 
-        selected_boxes = self._selected_preview_boxes()
+        selected_indices = self._selected_annotation_indices()
+        selected_boxes = [
+            self.current_preview_boxes[index]
+            for index in selected_indices
+        ]
         if not selected_boxes:
             messagebox.showinfo("Info", "Select one or more annotations to delete first.")
             return
@@ -1183,7 +1430,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
             root = tree.getroot()
             objects = root.findall('object')
             object_indexes = []
-            for list_index, selected_box in zip(self._selected_annotation_indices(), selected_boxes):
+            for list_index, selected_box in zip(selected_indices, selected_boxes):
                 object_index = selected_box.get('object_index')
                 if object_index is None:
                     object_index = list_index
@@ -1220,7 +1467,11 @@ Note: Deleted files are permanently removed. Use with caution!"""
         if not current_file:
             return
 
-        selected_boxes = self._selected_preview_boxes()
+        selected_indices = self._selected_annotation_indices()
+        selected_boxes = [
+            self.current_preview_boxes[index]
+            for index in selected_indices
+        ]
         if not selected_boxes:
             messagebox.showinfo("Info", "Select one or more annotations to rename first.")
             return
@@ -1249,7 +1500,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
             root = tree.getroot()
             objects = root.findall('object')
             object_indexes = []
-            for list_index, selected_box in zip(self._selected_annotation_indices(), selected_boxes):
+            for list_index, selected_box in zip(selected_indices, selected_boxes):
                 object_index = selected_box.get('object_index')
                 if object_index is None:
                     object_index = list_index
@@ -1354,9 +1605,41 @@ Note: Deleted files are permanently removed. Use with caution!"""
 
         return ordered
 
+    def _labels_for_preview_dropdown(self, current_file):
+        ordered = []
+
+        def _append(label):
+            text = str(label or '').strip()
+            if text and text not in ordered:
+                ordered.append(text)
+
+        _append(self.label_memory.current_label)
+        for label in self.label_memory.labels:
+            _append(label)
+        for box in self.current_preview_boxes:
+            _append(box.get('label'))
+
+        if current_file:
+            for label in self._get_image_labels(current_file):
+                _append(label)
+
+        if self.folder_labels_listbox is not None:
+            for entry in self.folder_labels_listbox.get(0, tk.END):
+                _append(entry.rsplit("(", 1)[0].strip())
+
+        return ordered
+
     def reannotate_current(self):
         current_file = self._get_current_file()
         if not current_file:
+            return
+
+        if self.preview_window and self.reannotation_canvas and self.reannotation_autosave:
+            try:
+                self.reannotation_canvas.focus_set()
+            except tk.TclError:
+                pass
+            self.log_queue.put("Preview canvas is already editable; drag box edges or corners directly.")
             return
 
         image_path = self._image_path(current_file)
@@ -1386,6 +1669,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
         display_height = max(1, int(round(h * scale)))
         self.reannotation_scale = scale
         self.reannotation_display_size = (display_width, display_height)
+        self.reannotation_autosave = False
 
         if scale < 1.0:
             pil_image = Image.fromarray(rgb_image).resize((display_width, display_height), Image.LANCZOS)
@@ -1547,7 +1831,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
             text=ann['label'],
             anchor=anchor,
             fill='green',
-            font=('Arial', 10, 'bold')
+            font=('Arial', 10, 'bold'),
+            state=tk.NORMAL if self.show_labels_var.get() else tk.HIDDEN
         )
         self.reannotation_annotations.append(ann)
         self.reannotation_rect_ids.append(rect_id)
@@ -1585,6 +1870,18 @@ Note: Deleted files are permanently removed. Use with caution!"""
             )
         if index is not None and 0 <= index < len(self.reannotation_annotations):
             self.reannotation_label_var.set(self.reannotation_annotations[index]['label'])
+            if self.annotation_listbox is not None:
+                try:
+                    if self._syncing_annotation_selection:
+                        return
+                    self._syncing_annotation_selection = True
+                    self.annotation_listbox.selection_clear(0, tk.END)
+                    self.annotation_listbox.selection_set(index)
+                    self.annotation_listbox.see(index)
+                except tk.TclError:
+                    pass
+                finally:
+                    self._syncing_annotation_selection = False
 
     def _hit_test_reannotation_box(self, x, y):
         tolerance = 7
@@ -1634,12 +1931,16 @@ Note: Deleted files are permanently removed. Use with caution!"""
             return
         if not self.reannotation_guideline_ids:
             self.reannotation_guideline_ids = [
-                self.reannotation_canvas.create_line(x, 0, x, height, fill='yellow', dash=(4, 3)),
-                self.reannotation_canvas.create_line(0, y, width, y, fill='yellow', dash=(4, 3))
+                self.reannotation_canvas.create_line(x, 0, x, height, fill='black', width=3),
+                self.reannotation_canvas.create_line(0, y, width, y, fill='black', width=3),
+                self.reannotation_canvas.create_line(x, 0, x, height, fill='#00ffff', width=1, dash=(4, 3)),
+                self.reannotation_canvas.create_line(0, y, width, y, fill='#00ffff', width=1, dash=(4, 3))
             ]
         else:
             self.reannotation_canvas.coords(self.reannotation_guideline_ids[0], x, 0, x, height)
             self.reannotation_canvas.coords(self.reannotation_guideline_ids[1], 0, y, width, y)
+            self.reannotation_canvas.coords(self.reannotation_guideline_ids[2], x, 0, x, height)
+            self.reannotation_canvas.coords(self.reannotation_guideline_ids[3], 0, y, width, y)
         for guide_id in self.reannotation_guideline_ids:
             self.reannotation_canvas.tag_raise(guide_id)
 
@@ -1660,6 +1961,10 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self._update_reannotation_cursor(x, y)
 
     def _on_reannotation_mouse_down(self, event):
+        try:
+            self.reannotation_canvas.focus_set()
+        except tk.TclError:
+            pass
         x, y = self._clamp_reannotation_point(event.x, event.y)
         hit_index, hit_mode = self._hit_test_reannotation_box(x, y)
         self._show_reannotation_guidelines(x, y)
@@ -1746,6 +2051,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
                 ann['y1'], ann['y2'] = sorted((ann['y1'], ann['y2']))
                 self._update_reannotation_item(self.reannotation_active_index)
                 self.log_queue.put(f"Adjusted {ann['label']} annotation")
+                self._autosave_reannotation_if_needed()
             self.reannotation_drag_mode = None
             self.reannotation_drag_start = None
             return
@@ -1761,6 +2067,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
 
         label = self.reannotation_label_var.get().strip() or "object"
         self._add_reannotation_box(x1, y1, x2, y2, label, log=True)
+        self._autosave_reannotation_if_needed()
 
     def _add_reannotation_label(self):
         """Add a user-typed label to the re-annotation dropdown.
@@ -1873,34 +2180,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
         if refresh and image_file:
             self.apply_filters(preserve_file=image_file)
 
-    def save_reannotation(self):
-        if not self.reannotation_annotations:
-            filename = os.path.basename(self.reannotation_image_path)
-            xml_path = self._xml_path_for_image(filename)
-            if not os.path.exists(xml_path):
-                messagebox.showwarning("Warning", "Draw at least one annotation before saving.")
-                return
-            result = messagebox.askyesno(
-                "Remove All Annotations",
-                f"No boxes remain for {filename}. Delete its XML annotation file?"
-            )
-            if not result:
-                return
-            try:
-                os.remove(xml_path)
-                self.log_queue.put(f"Deleted annotation XML after clearing boxes: {Path(xml_path).name}")
-                self.close_reannotation_window(refresh=False)
-                self.scan_folder_labels()
-                self.apply_filters(preserve_file=filename)
-            except Exception as exc:
-                messagebox.showerror("Error", f"Could not delete XML annotation: {exc}")
-            return
-
-        self.label_memory.merge_labels(
-            [ann['label'] for ann in self.reannotation_annotations],
-            current_label=self.reannotation_label_var.get()
-        )
-
+    def _build_reannotation_xml_root(self):
         folder = os.path.basename(os.path.dirname(self.reannotation_image_path))
         filename = os.path.basename(self.reannotation_image_path)
         h, w, c = self.reannotation_image.shape
@@ -1944,6 +2224,59 @@ Note: Deleted files are permanently removed. Use with caution!"""
             ET.SubElement(bbox, "ymin").text = str(ymin)
             ET.SubElement(bbox, "ymax").text = str(ymax)
             valid_annotations += 1
+
+        return root, valid_annotations, filename
+
+    def _autosave_reannotation_if_needed(self, force=False):
+        if not force and not self.reannotation_autosave:
+            return "break"
+        if not self.reannotation_image_path or self.reannotation_image is None:
+            return "break"
+
+        try:
+            if not self.reannotation_annotations:
+                return "break"
+            root, valid_annotations, filename = self._build_reannotation_xml_root()
+            if not valid_annotations:
+                return "break"
+            xml_path = self._xml_path_for_image(filename)
+            self._write_xml_file(root, xml_path)
+            self.current_preview_boxes, _ = self.parse_xml(xml_path)
+            self._refresh_annotation_listbox_entries()
+            self.log_queue.put(f"Auto-saved box edits to: {Path(xml_path).name}")
+        except Exception as exc:
+            self.log_queue.put(f"Could not auto-save box edits: {exc}")
+        return "break"
+
+    def save_reannotation(self):
+        if not self.reannotation_annotations:
+            filename = os.path.basename(self.reannotation_image_path)
+            xml_path = self._xml_path_for_image(filename)
+            if not os.path.exists(xml_path):
+                messagebox.showwarning("Warning", "Draw at least one annotation before saving.")
+                return
+            result = messagebox.askyesno(
+                "Remove All Annotations",
+                f"No boxes remain for {filename}. Delete its XML annotation file?"
+            )
+            if not result:
+                return
+            try:
+                os.remove(xml_path)
+                self.log_queue.put(f"Deleted annotation XML after clearing boxes: {Path(xml_path).name}")
+                self.close_reannotation_window(refresh=False)
+                self.scan_folder_labels()
+                self.apply_filters(preserve_file=filename)
+            except Exception as exc:
+                messagebox.showerror("Error", f"Could not delete XML annotation: {exc}")
+            return
+
+        self.label_memory.merge_labels(
+            [ann['label'] for ann in self.reannotation_annotations],
+            current_label=self.reannotation_label_var.get()
+        )
+
+        root, valid_annotations, filename = self._build_reannotation_xml_root()
 
         if not valid_annotations:
             messagebox.showwarning("Warning", "No valid annotations were drawn.")
@@ -2028,6 +2361,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self.preview_window = None
             self.preview_content_frame = None
             self.preview_scroll_canvas = None
+            self.reannotation_canvas = None
+            self.reannotation_autosave = False
 
     def toggle_auto_advance(self):
         self.auto_advance_var.set(not self.auto_advance_var.get())
