@@ -4,6 +4,14 @@ A desktop application for the complete end-to-end workflow of building TensorFlo
 
 ## Launch
 
+Create your private environment file first:
+
+```bash
+copy .env.example .env
+```
+
+Fill `.env` with your local dataset paths, model settings, and hyperparameters. The real `.env` file is ignored by git so those values stay out of the public repo.
+
 ```bash
 python GuiModelMaker__MAIN__.py
 ```
@@ -163,7 +171,7 @@ This is where you compare training runs side-by-side to decide which hyperparame
 
 ### Multi-model comparison
 
-When you load multiple logs, the visualizer overlays their curves on the same axes and generates a **comparison statistics table**. This makes it straightforward to see, for example, that Run A (LR=0.004, batch=16) converges faster but Run B (LR=0.002, batch=32) achieves a higher final AP50.
+When you load multiple logs, the visualizer overlays their curves on the same axes and generates a **comparison statistics table**. This makes it straightforward to see which run converges faster and which one achieves a higher final AP50.
 
 ### Export
 

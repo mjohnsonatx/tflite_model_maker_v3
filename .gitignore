@@ -10,3 +10,16 @@ __pycache__/
 /robo_3/
 /robo_4/
 /robo_combined/
+/dumbbell_models/
+.env
+.env.*
+!.env.example
+.venv/
+training_visualizer_data.csv
+efficientdet_hparam_tuning_guide.md
+world_filter_review*.csv
+world_filter_review*.html
+training_reports/
+codex_test_tmp/
+tmp*/
+.private_artifacts/

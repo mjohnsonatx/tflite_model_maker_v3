@@ -3,20 +3,13 @@ import shutil
 import sys
 import datetime
 import os
-import sys
 import random
 import numpy as np
 from pathlib import Path
 
-from tensorflow.keras import mixed_precision
+from env_config import load_training_settings
 
-mixed_precision.set_global_policy('mixed_float16')  # TF 2.8 OK
-
-import tensorflow as tf
-import tflite_model_maker
-from tflite_model_maker import object_detector
-from DualLogger import DualLogger, save_specifications
-from training_visualizer.core.visualizer import visualize_training
+SETTINGS = load_training_settings()
 
 """
 Settings to implement determinism in an effort to reduce variability caused by mixed precision
@@ -34,81 +27,45 @@ When determinism is enabled, random ops must have a seed specified.
 # -----------------------------
 # Redirect temp files to D:
 # -----------------------------
-tempfile.tempdir = r"D:\tflite_cache_temp"
+tempfile.tempdir = SETTINGS.temp_dir
 os.environ["TMPDIR"] = tempfile.tempdir
 os.environ["TEMP"] = tempfile.tempdir
 os.environ["TMP"] = tempfile.tempdir
 os.makedirs(tempfile.tempdir, exist_ok=True)
 
+from tensorflow.keras import mixed_precision
+
+mixed_precision.set_global_policy(SETTINGS.mixed_precision_policy)  # TF 2.8 OK
+
+import tensorflow as tf
+import tflite_model_maker
+from tflite_model_maker import object_detector
+from DualLogger import DualLogger, save_specifications
+from training_visualizer.core.visualizer import visualize_training
+
 # -----------------------------
 # Configuration
 # -----------------------------
-# EXPORT_BASE_DIR = 'barbell_models'
-# DATA_DIR = 'FINAL_BARBELL_DATA'
-DATA_DIR = 'db_final_data'
-EXPORT_BASE_DIR_DUMBBELL = 'dumbbell_models'
+DATA_DIR = SETTINGS.data_dir
+EXPORT_BASE_DIR = SETTINGS.export_base_dir
 
-TRAIN_DIR = os.path.join(DATA_DIR, 'train')
-VALID_DIR = os.path.join(DATA_DIR, 'valid')
-TEST_DIR = os.path.join(DATA_DIR, 'test')
+TRAIN_DIR = SETTINGS.train_dir
+VALID_DIR = SETTINGS.valid_dir
+TEST_DIR = SETTINGS.test_dir
 
-CACHE_DIR = r"D:\tflite_cache"
+CACHE_DIR = SETTINGS.cache_dir
 
-BATCH_SIZE = 16
-EPOCHS = 225
+BATCH_SIZE = SETTINGS.batch_size
+EPOCHS = SETTINGS.epochs
 
-BACKBONE = 'efficientnetv2_b3_imagenet'
-ARCHITECTURE = 'efficientdet_lite0'
-TRAIN_WHOLE_MODEL = True
+BACKBONE = SETTINGS.backbone
+ARCHITECTURE = SETTINGS.architecture
+TRAIN_WHOLE_MODEL = SETTINGS.train_whole_model
 
-#KETTLEBELL_LABEL_MAP = {1: "kettlebell"}
-# BARBELL_LABEL_MAP = {1: "barbell"}
-DUMBBELL_LABEL_MAP = {1: "dumbbell"}
-HPARAMS = {
-    'backbone_name': BACKBONE,
-    'num_classes': 1,
-    'image_size': 320,
-    'nms_configs': {
-        'method': 'gaussian',
-        'iou_thresh': 0.5,
-        'score_thresh': 0.4,
-        'sigma': 0.5,
-        'pyfunc': False,
-        'max_nms_inputs': 5000,
-        'max_output_size': 100,
-    },
-    'alpha': 0.25,
-    'gamma': 1.25,
-    'delta': 0.1,
-    'box_loss_weight': 80.0,
-    'label_smoothing': 0.05,
-    'learning_rate': 0.0045,
-    'lr_warmup_init': 0.0003,
-    'lr_warmup_epoch': 8.0,
-    'lr_decay_method': 'cosine',
-    'first_lr_drop_epoch': 20.0,
-    'second_lr_drop_epoch': 40.0,
-    'poly_lr_power': 0.9,
-    'momentum': 0.9,
-    'optimizer': 'sgd',
-    'weight_decay': 0.0001,
-    'clip_gradients_norm': 10.0,
-    'moving_average_decay': 0.9998,
-    'input_rand_hflip': True,
-    'jitter_min': 0.85,
-    'jitter_max': 1.15,
-    'autoaugment_policy': None,
-    'grid_mask': False,
-    'anchor_scale': 2.5,
-    'aspect_ratios': [0.33, 0.5, 1.0, 2.0, 3.0],
-    'num_scales': 2,
-    'skip_crowd_during_training': True,
-    'max_instances_per_image': 100,
-    'mixed_precision': False,
-    'drop_remainder': True,
-    'map_freq': 5,
-    'num_epochs': 125,
-}
+LABEL_MAP = {SETTINGS.label_map_id: SETTINGS.label}
+HPARAMS = SETTINGS.hparams
+MODEL_NAME = SETTINGS.model_name
+MODEL_URI = SETTINGS.model_uri
 
 
 # -----------------------------
@@ -228,7 +185,7 @@ if __name__ == "__main__":
 
     # Create dated export directory
     date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    EXPORT_DIR = os.path.join(EXPORT_BASE_DIR_DUMBBELL, f"{ARCHITECTURE}_{date_str}")
+    EXPORT_DIR = os.path.join(EXPORT_BASE_DIR, f"{ARCHITECTURE}_{date_str}")
     os.makedirs(EXPORT_DIR, exist_ok=True)
 
     # Set up logging
@@ -263,8 +220,8 @@ if __name__ == "__main__":
         # Model spec
         # -----------------------------
         model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
-            model_name='efficientdet-lite0',
-            uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+            model_name=MODEL_NAME,
+            uri=MODEL_URI,
             hparams=HPARAMS
         )
 
@@ -274,21 +231,21 @@ if __name__ == "__main__":
         train = object_detector.DataLoader.from_pascal_voc(
             images_dir=TRAIN_DIR,
             annotations_dir=TRAIN_DIR,
-            label_map=DUMBBELL_LABEL_MAP,
+            label_map=LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=4
         )
         valid = object_detector.DataLoader.from_pascal_voc(
             images_dir=VALID_DIR,
             annotations_dir=VALID_DIR,
-            label_map=DUMBBELL_LABEL_MAP,
+            label_map=LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=2
         )
         test = object_detector.DataLoader.from_pascal_voc(
             images_dir=TEST_DIR,
             annotations_dir=TEST_DIR,
-            label_map=DUMBBELL_LABEL_MAP,
+            label_map=LABEL_MAP,
             cache_dir=CACHE_DIR,
             num_shards=1
         )
@@ -329,7 +286,8 @@ if __name__ == "__main__":
         # -----------------------------
         # Export model
         # -----------------------------
-        tflite_filename = f"__DUMBBELL__{ARCHITECTURE}_{date_str}.tflite"
+        label_token = SETTINGS.label.upper().replace(" ", "_")
+        tflite_filename = f"__{label_token}__{ARCHITECTURE}_{date_str}.tflite"
 
         print(f"\nExporting model to {EXPORT_DIR}...")
         model.export(

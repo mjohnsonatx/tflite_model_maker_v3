@@ -8,13 +8,35 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 import tflite_model_maker
 from tflite_model_maker import object_detector
 
+from env_config import EnvConfig
 from TrainingToolTip import ToolTip
 
 
 class TrainingTab:
+    PRESET_FIELDS = [
+        ("epochs_var", "EPOCHS", "text"),
+        ("batch_size_var", "BATCH_SIZE", "text"),
+        ("learning_rate_var", "LEARNING_RATE", "text"),
+        ("lr_warmup_init_var", "LR_WARMUP_INIT", "text"),
+        ("optimizer_var", "OPTIMIZER", "text"),
+        ("momentum_var", "MOMENTUM", "text"),
+        ("weight_decay_var", "WEIGHT_DECAY", "text"),
+        ("gradient_clip_var", "GRADIENT_CLIP", "text"),
+        ("label_smoothing_var", "LABEL_SMOOTHING", "text"),
+        ("autoaugment_var", "AUTOAUGMENT", "text"),
+        ("jitter_min_var", "JITTER_MIN", "text"),
+        ("jitter_max_var", "JITTER_MAX", "text"),
+        ("grid_mask_var", "GRID_MASK", "bool"),
+        ("score_thresh_var", "SCORE_THRESH", "text"),
+        ("backbone_var", "BACKBONE", "text"),
+        ("train_whole_model_var", "TRAIN_WHOLE_MODEL", "bool"),
+        ("max_output_size_var", "MAX_OUTPUT_SIZE", "text"),
+    ]
+
     def __init__(self, parent, log_queue):
         self.parent = parent
         self.log_queue = log_queue
+        self.env_config = EnvConfig()
         self.app_root = os.path.dirname(os.path.abspath(__file__))
         self.training_thread = None
         self.stop_flag = threading.Event()
@@ -23,6 +45,16 @@ class TrainingTab:
         self.tooltips_enabled = tk.BooleanVar(value=True)
         self.tooltip_widgets = []
         self.setup_ui()
+
+    def env_text(self, key):
+        value = self.env_config.get(key, "")
+        return "" if value is None else value
+
+    def env_bool(self, key):
+        return self.env_config.bool(key, default=False)
+
+    def required_env_text(self, key):
+        return self.env_config.text(key, required=True)
 
     def setup_ui(self):
         # Main frame directly in parent - no canvas/scrollbar
@@ -89,7 +121,7 @@ class TrainingTab:
         label_frame.pack(fill="x", pady=(0, 10))
         label_label = ttk.Label(label_frame, text="Object Label:")
         label_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.label_var = tk.StringVar(value="kettlebell")
+        self.label_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_LABEL"))
         ttk.Entry(label_frame, textvariable=self.label_var, width=20).pack(side=tk.LEFT)
         self.add_tooltip(label_label, "The class name for your object (e.g., 'kettlebell', 'person', 'car')")
 
@@ -98,7 +130,7 @@ class TrainingTab:
         arch_frame.pack(fill="x", pady=(0, 10))
         arch_label = ttk.Label(arch_frame, text="Model Architecture:")
         arch_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.architecture_var = tk.StringVar(value="efficientdet_lite0")
+        self.architecture_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_ARCHITECTURE"))
         ttk.Label(arch_frame, text="EfficientDet-Lite0 (320x320 input)").pack(side=tk.LEFT)
         self.add_tooltip(arch_label, "EfficientDet-Lite0 is optimized for mobile/edge devices with 320x320 input size")
 
@@ -107,7 +139,7 @@ class TrainingTab:
         backbone_frame.pack(fill="x", pady=(0, 10))
         backbone_label = ttk.Label(backbone_frame, text="Backbone:")
         backbone_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.backbone_var = tk.StringVar(value="efficientnet-b0")
+        self.backbone_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_BACKBONE"))
         backbone_combo = ttk.Combobox(backbone_frame, textvariable=self.backbone_var,
                                       values=["efficientnet-b0", "efficientnet-b1",
                                               "efficientnet-b2", "efficientnet-b3"],
@@ -119,7 +151,7 @@ class TrainingTab:
         # Training mode
         mode_frame = ttk.Frame(model_frame)
         mode_frame.pack(fill="x", pady=(0, 10))
-        self.train_whole_model_var = tk.BooleanVar(value=True)
+        self.train_whole_model_var = tk.BooleanVar(value=self.env_bool("TFLITE_GUI_DEFAULT_TRAIN_WHOLE_MODEL"))
         whole_model_cb = ttk.Checkbutton(mode_frame, text="Train whole model (not just head)",
                                          variable=self.train_whole_model_var)
         whole_model_cb.pack(side=tk.LEFT)
@@ -146,7 +178,7 @@ class TrainingTab:
         epochs_frame.pack(fill="x", pady=(0, 5))
         epochs_label = ttk.Label(epochs_frame, text="Epochs:")
         epochs_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.epochs_var = tk.StringVar(value="50")
+        self.epochs_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_EPOCHS"))
         ttk.Entry(epochs_frame, textvariable=self.epochs_var, width=10).pack(side=tk.LEFT)
         self.add_tooltip(epochs_label, "Number of complete passes through the training dataset")
 
@@ -155,7 +187,7 @@ class TrainingTab:
         batch_frame.pack(fill="x", pady=(0, 5))
         batch_label = ttk.Label(batch_frame, text="Batch Size:")
         batch_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.batch_size_var = tk.StringVar(value="8")
+        self.batch_size_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_BATCH_SIZE"))
         ttk.Entry(batch_frame, textvariable=self.batch_size_var, width=10).pack(side=tk.LEFT)
         ttk.Label(batch_frame, text="(lower if GPU memory issues)").pack(side=tk.LEFT, padx=(10, 0))
         self.add_tooltip(batch_label, "Number of images processed together. Lower values use less memory")
@@ -165,7 +197,7 @@ class TrainingTab:
         lr_frame.pack(fill="x", pady=(0, 5))
         lr_label = ttk.Label(lr_frame, text="Learning Rate:")
         lr_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.learning_rate_var = tk.StringVar(value="0.008")
+        self.learning_rate_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_LEARNING_RATE"))
         ttk.Entry(lr_frame, textvariable=self.learning_rate_var, width=10).pack(side=tk.LEFT)
         self.add_tooltip(lr_label, "Step size for weight updates. Lower = more stable, Higher = faster training")
 
@@ -174,7 +206,7 @@ class TrainingTab:
         warmup_frame.pack(fill="x", pady=(0, 5))
         warmup_label = ttk.Label(warmup_frame, text="LR Warmup Init:")
         warmup_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.lr_warmup_init_var = tk.StringVar(value="0.001")
+        self.lr_warmup_init_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_LR_WARMUP_INIT"))
         ttk.Entry(warmup_frame, textvariable=self.lr_warmup_init_var, width=10).pack(side=tk.LEFT)
         self.add_tooltip(warmup_label, "Initial learning rate for warmup period. Gradually increases to main LR")
 
@@ -196,7 +228,7 @@ class TrainingTab:
         ttk.Label(adv_left, text="Optimization", font=('TkDefaultFont', 10, 'bold')).pack(anchor=tk.W, pady=(0, 5))
 
         # Optimizer
-        self.optimizer_var = tk.StringVar(value="sgd")
+        self.optimizer_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_OPTIMIZER"))
         opt_frame = ttk.Frame(adv_left)
         opt_frame.pack(fill="x", pady=(0, 5))
         opt_label = ttk.Label(opt_frame, text="Optimizer:")
@@ -206,7 +238,7 @@ class TrainingTab:
         self.add_tooltip(opt_label, "SGD: stable but slower, Adam: faster convergence but may be less stable")
 
         # Momentum
-        self.momentum_var = tk.StringVar(value="0.9")
+        self.momentum_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_MOMENTUM"))
         mom_frame = ttk.Frame(adv_left)
         mom_frame.pack(fill="x", pady=(0, 5))
         mom_label = ttk.Label(mom_frame, text="Momentum:")
@@ -215,7 +247,7 @@ class TrainingTab:
         self.add_tooltip(mom_label, "Helps accelerate SGD in relevant direction (0.9 is standard)")
 
         # Weight decay
-        self.weight_decay_var = tk.StringVar(value="4e-5")
+        self.weight_decay_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_WEIGHT_DECAY"))
         wd_frame = ttk.Frame(adv_left)
         wd_frame.pack(fill="x", pady=(0, 5))
         wd_label = ttk.Label(wd_frame, text="Weight Decay:")
@@ -224,7 +256,7 @@ class TrainingTab:
         self.add_tooltip(wd_label, "L2 regularization to prevent overfitting (1e-5 to 1e-4 typical)")
 
         # Gradient clipping
-        self.gradient_clip_var = tk.StringVar(value="10.0")
+        self.gradient_clip_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_GRADIENT_CLIP"))
         gc_frame = ttk.Frame(adv_left)
         gc_frame.pack(fill="x", pady=(0, 5))
         gc_label = ttk.Label(gc_frame, text="Gradient Clip:")
@@ -233,7 +265,7 @@ class TrainingTab:
         self.add_tooltip(gc_label, "Maximum gradient norm to prevent exploding gradients")
 
         # Label smoothing
-        self.label_smoothing_var = tk.StringVar(value="0.1")
+        self.label_smoothing_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_LABEL_SMOOTHING"))
         ls_frame = ttk.Frame(adv_left)
         ls_frame.pack(fill="x", pady=(0, 5))
         ls_label = ttk.Label(ls_frame, text="Label Smoothing:")
@@ -245,7 +277,7 @@ class TrainingTab:
         ttk.Label(adv_right, text="Augmentation", font=('TkDefaultFont', 10, 'bold')).pack(anchor=tk.W, pady=(0, 5))
 
         # AutoAugment
-        self.autoaugment_var = tk.StringVar(value="v2")
+        self.autoaugment_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_AUTOAUGMENT"))
         aug_frame = ttk.Frame(adv_right)
         aug_frame.pack(fill="x", pady=(0, 5))
         aug_label = ttk.Label(aug_frame, text="AutoA ugment:")
@@ -255,7 +287,7 @@ class TrainingTab:
         self.add_tooltip(aug_label, "Automatic augmentation policy. v2/v3 are stronger, None disables")
 
         # Jitter min
-        self.jitter_min_var = tk.StringVar(value="0.1")
+        self.jitter_min_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_JITTER_MIN"))
         jmin_frame = ttk.Frame(adv_right)
         jmin_frame.pack(fill="x", pady=(0, 5))
         jmin_label = ttk.Label(jmin_frame, text="Jitter Min:")
@@ -264,7 +296,7 @@ class TrainingTab:
         self.add_tooltip(jmin_label, "Minimum scale factor for random resizing (0.1 = 10% of original)")
 
         # Jitter max
-        self.jitter_max_var = tk.StringVar(value="2.0")
+        self.jitter_max_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_JITTER_MAX"))
         jmax_frame = ttk.Frame(adv_right)
         jmax_frame.pack(fill="x", pady=(0, 5))
         jmax_label = ttk.Label(jmax_frame, text="Jitter Max:")
@@ -273,14 +305,14 @@ class TrainingTab:
         self.add_tooltip(jmax_label, "Maximum scale factor for random resizing (2.0 = 200% of original)")
 
         # Random horizontal flip
-        self.input_rand_hflip_var = tk.BooleanVar(value=True)
+        self.input_rand_hflip_var = tk.BooleanVar(value=self.env_bool("TFLITE_GUI_DEFAULT_INPUT_RAND_HFLIP"))
         hflip_cb = ttk.Checkbutton(adv_right, text="Random Horizontal Flip",
                                    variable=self.input_rand_hflip_var)
         hflip_cb.pack(anchor=tk.W)
         self.add_tooltip(hflip_cb, "Randomly flip images horizontally for augmentation")
 
         # Grid mask
-        self.grid_mask_var = tk.BooleanVar(value=False)
+        self.grid_mask_var = tk.BooleanVar(value=self.env_bool("TFLITE_GUI_DEFAULT_GRID_MASK"))
         grid_cb = ttk.Checkbutton(adv_right, text="Grid Mask Augmentation",
                                   variable=self.grid_mask_var)
         grid_cb.pack(anchor=tk.W)
@@ -294,7 +326,7 @@ class TrainingTab:
         loss_params.pack(fill="x")
 
         # Focal loss alpha
-        self.alpha_var = tk.StringVar(value="0.25")
+        self.alpha_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_ALPHA"))
         alpha_frame = ttk.Frame(loss_params)
         alpha_frame.pack(fill="x", pady=(0, 5))
         alpha_label = ttk.Label(alpha_frame, text="Focal Loss Alpha:")
@@ -303,7 +335,7 @@ class TrainingTab:
         self.add_tooltip(alpha_label, "Balances positive/negative examples in focal loss")
 
         # Focal loss gamma
-        self.gamma_var = tk.StringVar(value="1.5")
+        self.gamma_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_GAMMA"))
         gamma_frame = ttk.Frame(loss_params)
         gamma_frame.pack(fill="x", pady=(0, 5))
         gamma_label = ttk.Label(gamma_frame, text="Focal Loss Gamma:")
@@ -312,7 +344,7 @@ class TrainingTab:
         self.add_tooltip(gamma_label, "Focusing parameter for hard examples (1.5-2.0 typical)")
 
         # Box loss weight
-        self.box_loss_weight_var = tk.StringVar(value="50.0")
+        self.box_loss_weight_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_BOX_LOSS_WEIGHT"))
         box_weight_frame = ttk.Frame(loss_params)
         box_weight_frame.pack(fill="x", pady=(0, 5))
         box_weight_label = ttk.Label(box_weight_frame, text="Box Loss Weight:")
@@ -325,13 +357,13 @@ class TrainingTab:
         iou_frame.pack(fill="x", pady=(0, 5))
         iou_label = ttk.Label(iou_frame, text="IoU Loss Type:")
         iou_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.iou_loss_type_var = tk.StringVar(value="None")
+        self.iou_loss_type_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_IOU_LOSS_TYPE"))
         ttk.Combobox(iou_frame, textvariable=self.iou_loss_type_var,
                      values=["None", "iou", "ciou", "diou", "giou"], width=15).pack(side=tk.LEFT)
         self.add_tooltip(iou_label, "Additional IoU-based loss. CIoU/DIoU often work best")
 
         # IoU loss weight
-        self.iou_loss_weight_var = tk.StringVar(value="1.0")
+        self.iou_loss_weight_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_IOU_LOSS_WEIGHT"))
         iou_weight_frame = ttk.Frame(loss_params)
         iou_weight_frame.pack(fill="x", pady=(0, 5))
         iou_weight_label = ttk.Label(iou_weight_frame, text="IoU Loss Weight:")
@@ -347,7 +379,7 @@ class TrainingTab:
         nms_params.pack(fill="x")
 
         # NMS method
-        self.nms_method_var = tk.StringVar(value="gaussian")
+        self.nms_method_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_NMS_METHOD"))
         nms_method_frame = ttk.Frame(nms_params)
         nms_method_frame.pack(fill="x", pady=(0, 5))
         nms_method_label = ttk.Label(nms_method_frame, text="NMS Method:")
@@ -357,7 +389,7 @@ class TrainingTab:
         self.add_tooltip(nms_method_label, "Gaussian: soft suppression, Hard: traditional NMS")
 
         # Score threshold
-        self.score_thresh_var = tk.StringVar(value="0.0")
+        self.score_thresh_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_SCORE_THRESH"))
         score_frame = ttk.Frame(nms_params)
         score_frame.pack(fill="x", pady=(0, 5))
         score_label = ttk.Label(score_frame, text="Score Threshold:")
@@ -367,7 +399,7 @@ class TrainingTab:
         self.add_tooltip(score_label, "Minimum confidence score for detections")
 
         # IoU threshold
-        self.iou_thresh_var = tk.StringVar(value="0.5")
+        self.iou_thresh_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_IOU_THRESH"))
         iou_thresh_frame = ttk.Frame(nms_params)
         iou_thresh_frame.pack(fill="x", pady=(0, 5))
         iou_thresh_label = ttk.Label(iou_thresh_frame, text="IoU Threshold:")
@@ -376,7 +408,7 @@ class TrainingTab:
         self.add_tooltip(iou_thresh_label, "Maximum IoU between boxes before suppression")
 
         # Max output size
-        self.max_output_size_var = tk.StringVar(value="100")
+        self.max_output_size_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_MAX_OUTPUT_SIZE"))
         max_out_frame = ttk.Frame(nms_params)
         max_out_frame.pack(fill="x", pady=(0, 5))
         max_out_label = ttk.Label(max_out_frame, text="Max Detections:")
@@ -392,7 +424,7 @@ class TrainingTab:
         anchor_params.pack(fill="x")
 
         # Anchor scale
-        self.anchor_scale_var = tk.StringVar(value="4.0")
+        self.anchor_scale_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_ANCHOR_SCALE"))
         anchor_scale_frame = ttk.Frame(anchor_params)
         anchor_scale_frame.pack(fill="x", pady=(0, 5))
         anchor_scale_label = ttk.Label(anchor_scale_frame, text="Anchor Scale:")
@@ -405,13 +437,13 @@ class TrainingTab:
         aspect_frame.pack(fill="x", pady=(0, 5))
         aspect_label = ttk.Label(aspect_frame, text="Aspect Ratios:")
         aspect_label.pack(side=tk.LEFT, padx=(0, 10))
-        self.aspect_ratios_var = tk.StringVar(value="1.0,2.0,0.5")
+        self.aspect_ratios_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_ASPECT_RATIOS"))
         ttk.Entry(aspect_frame, textvariable=self.aspect_ratios_var, width=20).pack(side=tk.LEFT)
         ttk.Label(aspect_frame, text="(comma-separated)").pack(side=tk.LEFT, padx=(5, 0))
         self.add_tooltip(aspect_label, "Width/height ratios for anchor boxes (e.g., 1.0,2.0,0.5)")
 
         # Max instances
-        self.max_instances_var = tk.StringVar(value="100")
+        self.max_instances_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_MAX_INSTANCES"))
         max_inst_frame = ttk.Frame(anchor_params)
         max_inst_frame.pack(fill="x", pady=(0, 5))
         max_inst_label = ttk.Label(max_inst_frame, text="Max Instances per Image:")
@@ -427,7 +459,7 @@ class TrainingTab:
         lr_params.pack(fill="x")
 
         # LR decay method
-        self.lr_decay_method_var = tk.StringVar(value="cosine")
+        self.lr_decay_method_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_LR_DECAY_METHOD"))
         lr_method_frame = ttk.Frame(lr_params)
         lr_method_frame.pack(fill="x", pady=(0, 5))
         lr_method_label = ttk.Label(lr_method_frame, text="LR Decay Method:")
@@ -437,7 +469,7 @@ class TrainingTab:
         self.add_tooltip(lr_method_label, "How learning rate decreases over time")
 
         # First LR drop
-        self.first_lr_drop_var = tk.StringVar(value="0.7")
+        self.first_lr_drop_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_FIRST_LR_DROP"))
         first_drop_frame = ttk.Frame(lr_params)
         first_drop_frame.pack(fill="x", pady=(0, 5))
         first_drop_label = ttk.Label(first_drop_frame, text="First LR Drop (fraction):")
@@ -446,7 +478,7 @@ class TrainingTab:
         self.add_tooltip(first_drop_label, "When to first reduce LR (0.7 = 70% through training)")
 
         # Second LR drop
-        self.second_lr_drop_var = tk.StringVar(value="0.9")
+        self.second_lr_drop_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_SECOND_LR_DROP"))
         second_drop_frame = ttk.Frame(lr_params)
         second_drop_frame.pack(fill="x", pady=(0, 5))
         second_drop_label = ttk.Label(second_drop_frame, text="Second LR Drop (fraction):")
@@ -455,7 +487,7 @@ class TrainingTab:
         self.add_tooltip(second_drop_label, "When to second reduce LR (0.9 = 90% through training)")
 
         # Moving average decay
-        self.moving_average_decay_var = tk.StringVar(value="0.9998")
+        self.moving_average_decay_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_MOVING_AVERAGE_DECAY"))
         ma_frame = ttk.Frame(lr_params)
         ma_frame.pack(fill="x", pady=(0, 5))
         ma_label = ttk.Label(ma_frame, text="Moving Average Decay:")
@@ -489,7 +521,7 @@ class TrainingTab:
         export_frame = ttk.Frame(control_frame)
         export_frame.pack(fill="x", pady=(0, 10))
         ttk.Label(export_frame, text="Export Directory:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        self.export_dir_var = tk.StringVar(value="models")
+        self.export_dir_var = tk.StringVar(value=self.env_text("TFLITE_GUI_DEFAULT_EXPORT_DIR"))
         ttk.Entry(export_frame, textvariable=self.export_dir_var, width=40).grid(row=0, column=1, sticky=(tk.W, tk.E))
         ttk.Button(export_frame, text="Browse",
                    command=lambda: self.browse_directory(self.export_dir_var)).grid(row=0, column=2, padx=(5, 0))
@@ -545,55 +577,30 @@ class TrainingTab:
 
     def load_preset(self, event=None):
         preset = self.preset_var.get()
+        if preset == "custom":
+            return
 
-        if preset == "default":
-            self.epochs_var.set("50")
-            self.batch_size_var.set("8")
-            self.learning_rate_var.set("0.008")
-            self.lr_warmup_init_var.set("0.001")
-            self.optimizer_var.set("sgd")
-            self.momentum_var.set("0.9")
-            self.weight_decay_var.set("4e-5")
-            self.gradient_clip_var.set("10.0")
-            self.label_smoothing_var.set("0.1")
-            self.autoaugment_var.set("v2")
-            self.score_thresh_var.set("0.0")
+        prefix = f"TFLITE_GUI_PRESET_{preset.upper()}"
+        applied = False
 
-        elif preset == "high_accuracy":
-            self.epochs_var.set("100")
-            self.batch_size_var.set("4")
-            self.learning_rate_var.set("0.004")
-            self.lr_warmup_init_var.set("0.0008")
-            self.optimizer_var.set("sgd")
-            self.momentum_var.set("0.9")
-            self.weight_decay_var.set("5e-5")
-            self.gradient_clip_var.set("10.0")
-            self.label_smoothing_var.set("0.1")
-            self.autoaugment_var.set("v3")
-            self.jitter_min_var.set("0.1")
-            self.jitter_max_var.set("2.0")
-            self.grid_mask_var.set(True)
+        for attr_name, key_suffix, value_type in self.PRESET_FIELDS:
+            env_key = f"{prefix}_{key_suffix}"
+            value = self.env_config.get(env_key)
+            if value is None:
+                continue
 
-        elif preset == "fast_training":
-            self.epochs_var.set("25")
-            self.batch_size_var.set("16")
-            self.learning_rate_var.set("0.01")
-            self.lr_warmup_init_var.set("0.001")
-            self.optimizer_var.set("adam")
-            self.momentum_var.set("0.9")
-            self.weight_decay_var.set("1e-5")
-            self.gradient_clip_var.set("10.0")
-            self.autoaugment_var.set("v1")
-            self.grid_mask_var.set(False)
+            tk_var = getattr(self, attr_name)
+            if value_type == "bool":
+                tk_var.set(self.env_config.bool(env_key))
+            else:
+                tk_var.set(value)
+            applied = True
 
-        elif preset == "mobile_optimized":
-            self.epochs_var.set("50")
-            self.batch_size_var.set("8")
-            self.learning_rate_var.set("0.008")
-            self.backbone_var.set("efficientnet-b0")
-            self.train_whole_model_var.set(False)
-            self.max_output_size_var.set("50")
-            self.score_thresh_var.set("0.3")
+        if not applied:
+            messagebox.showwarning(
+                "Missing preset",
+                f"No values found for {preset}. Add {prefix}_* entries to your local .env."
+            )
 
     def save_preset(self):
         # Implementation for saving custom presets
@@ -639,11 +646,11 @@ class TrainingTab:
 
             hparams = {
                 'backbone_name': self.backbone_var.get(),
-                'image_size': 320,  # Fixed for lite0
-                'num_classes': 1,  # Single object class
+                'image_size': self.env_config.int("TFLITE_GUI_HPARAM_IMAGE_SIZE", required=True),
+                'num_classes': self.env_config.int("TFLITE_GUI_HPARAM_NUM_CLASSES", required=True),
                 'learning_rate': float(self.learning_rate_var.get()),
                 'lr_warmup_init': float(self.lr_warmup_init_var.get()),
-                'lr_warmup_epoch': 1.0,
+                'lr_warmup_epoch': self.env_config.float("TFLITE_GUI_HPARAM_LR_WARMUP_EPOCH", required=True),
                 'first_lr_drop_epoch': first_drop_epoch,
                 'second_lr_drop_epoch': second_drop_epoch,
                 'lr_decay_method': self.lr_decay_method_var.get(),
@@ -670,17 +677,18 @@ class TrainingTab:
                     'method': self.nms_method_var.get(),
                     'iou_thresh': float(self.iou_thresh_var.get()),
                     'score_thresh': float(self.score_thresh_var.get()),
-                    'sigma': 0.5 if self.nms_method_var.get() == 'gaussian' else None,
+                    'sigma': self.env_config.optional_float("TFLITE_GUI_HPARAM_NMS_SIGMA")
+                    if self.nms_method_var.get() == 'gaussian' else None,
                     'max_output_size': int(self.max_output_size_var.get())
                 },
                 'tflite_max_detections': int(self.max_output_size_var.get()),
-                'strategy': None,  # Will be set based on available hardware
+                'strategy': self.env_config.optional_text("TFLITE_GUI_HPARAM_STRATEGY"),
                 'num_epochs': epochs
             }
 
             model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
-                model_name='efficientdet-lite0',
-                uri='https://tfhub.dev/tensorflow/efficientdet/lite0/feature-vector/1',
+                model_name=self.required_env_text("TFLITE_GUI_MODEL_NAME"),
+                uri=self.required_env_text("TFLITE_GUI_MODEL_URI"),
                 hparams=hparams
             )
 
