@@ -275,7 +275,7 @@ def export_comparison_to_pdf(dataset_configs, output_dir=None):
                 print(f"   ⚠️ Error loading {config['name']}: {e}")
 
         if not datasets:
-            print("❌ No valid datasets loaded")
+            print("❌ No valid_FINAL_CLEAN_DONISH datasets loaded")
             return False
 
         # Setup output directory

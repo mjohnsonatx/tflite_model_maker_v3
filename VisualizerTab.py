@@ -278,7 +278,7 @@ class VisualizerTab:
         # Validate the log file
         if not self._validate_training_log(file_path):
             messagebox.showerror("Invalid Log",
-                                 "The selected file doesn't appear to be a valid training log.")
+                                 "The selected file doesn't appear to be a valid_FINAL_CLEAN_DONISH training log.")
             return
 
         # Create a display name from the file path
@@ -973,7 +973,7 @@ class VisualizerTab:
 #         # Validate the log file
 #         if not self._validate_training_log(file_path):
 #             messagebox.showerror("Invalid Log",
-#                                  "The selected file doesn't appear to be a valid training log.")
+#                                  "The selected file doesn't appear to be a valid_FINAL_CLEAN_DONISH training log.")
 #             return
 #
 #         # Create a display name from the file path

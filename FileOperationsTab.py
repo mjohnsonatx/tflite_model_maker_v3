@@ -1195,9 +1195,9 @@ class FileOperationsTab:
             self.update_progress(0, "Preparing to split dataset...")
 
             # Create output directories
-            train_dir = os.path.join(output_base, "train")
+            train_dir = os.path.join(output_base, "train_NEEDS_ANOTHER_PASS")
             test_dir = os.path.join(output_base, "test_CLEAN")
-            valid_dir = os.path.join(output_base, "valid")
+            valid_dir = os.path.join(output_base, "valid_FINAL_CLEAN_DONISH")
 
             os.makedirs(train_dir, exist_ok=True)
             os.makedirs(test_dir, exist_ok=True)

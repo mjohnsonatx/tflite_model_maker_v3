@@ -1,5 +1,18 @@
 """Statistical analysis utilities."""
-import numpy as np
+try:
+    import numpy as np
+except ModuleNotFoundError:
+    class _NumpyStatsFallback:
+        @staticmethod
+        def mean(values):
+            return sum(values) / len(values)
+
+        @staticmethod
+        def std(values):
+            mean = _NumpyStatsFallback.mean(values)
+            return (sum((value - mean) ** 2 for value in values) / len(values)) ** 0.5
+
+    np = _NumpyStatsFallback()
 
 
 def calculate_statistics(metrics, eval_metrics):

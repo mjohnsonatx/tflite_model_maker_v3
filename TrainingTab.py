@@ -500,7 +500,7 @@ class TrainingTab:
         self.progress_bar = ttk.Progressbar(control_frame, variable=self.progress_var, maximum=100)
         self.progress_bar.pack(fill="x", pady=(10, 5))
 
-        self.status_label = ttk.Label(control_frame, text="Ready to train")
+        self.status_label = ttk.Label(control_frame, text="Ready to train_NEEDS_ANOTHER_PASS")
         self.status_label.pack()
 
         # Training buttons
@@ -684,7 +684,7 @@ class TrainingTab:
                 hparams=hparams
             )
 
-            # Create and train model
+            # Create and train_NEEDS_ANOTHER_PASS model
             self._update_status("Creating model...")
             self.current_model = object_detector.create(
                 train_data=train_data,

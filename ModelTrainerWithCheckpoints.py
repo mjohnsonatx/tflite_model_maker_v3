@@ -44,7 +44,7 @@ class ModelTrainerWithCheckpoints:
 
         Args:
             batch_size: Training batch size
-            train_whole_model: Whether to train whole model
+            train_whole_model: Whether to train_NEEDS_ANOTHER_PASS whole model
             resume_from_checkpoint: Whether to resume from existing checkpoint
 
         Returns:
@@ -78,9 +78,9 @@ class ModelTrainerWithCheckpoints:
         Train model with checkpointing.
 
         Args:
-            total_epochs: Total epochs to train
+            total_epochs: Total epochs to train_NEEDS_ANOTHER_PASS
             batch_size: Batch size
-            train_whole_model: Whether to train whole model
+            train_whole_model: Whether to train_NEEDS_ANOTHER_PASS whole model
             resume_from_checkpoint: Whether to resume from checkpoint
 
         Returns:

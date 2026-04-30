@@ -24,7 +24,7 @@ def combine_datasets(original_dir, augmented_dir, combined_dir):
 
 # Example usage
 if __name__ == "__main__":
-    original_directory = 'old data2/train'
+    original_directory = 'old data2/train_NEEDS_ANOTHER_PASS'
     augmented_directory = 'augmented_images_for_training'
     combined_directory = 'combined training old data2'
 

@@ -276,7 +276,7 @@ class AugmentationTab:
     def start_blackout(self):
         source = self.blackout_source_var.get().strip()
         if not source or not os.path.isdir(source):
-            messagebox.showwarning("Warning", "Select a valid source directory.")
+            messagebox.showwarning("Warning", "Select a valid_FINAL_CLEAN_DONISH source directory.")
             return
 
         in_place = self.blackout_inplace_var.get()

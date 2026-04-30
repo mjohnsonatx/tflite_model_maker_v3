@@ -6,6 +6,7 @@ from AugmentDataTab import AugmentationTab
 from DataCleaningGui import DataCleaningTab
 from FileOperationsTab import FileOperationsTab
 from FrameExtractionGui import FrameExtractionTab
+from InferenceTab import InferenceTab
 from PreviewValidateTab import PreviewValidateTab
 from TrainingTab import TrainingTab
 from VisualizerTab import VisualizerTab
@@ -111,6 +112,7 @@ class TFLiteModelMakerGUI:
         self.augmentation_tab = AugmentationTab(self.augmentation_frame, self.log_queue)
         self.training_tab = TrainingTab(self.training_frame, self.log_queue)
         self.visualizer_tab = VisualizerTab(self.visualizer_frame, self.log_queue)
+        self.inference_tab = InferenceTab(self.inference_frame, self.log_queue)
 
         # Bottom frame for log panel
         log_container = ttk.Frame(self.main_paned)
@@ -222,7 +224,7 @@ class TFLiteModelMakerGUI:
     def _on_canvas_configure(self, event):
         # Update the scroll frame width to match canvas
         canvas_width = event.width
-        if canvas_width > 0:  # Only update if we have a valid width
+        if canvas_width > 0:  # Only update if we have a valid_FINAL_CLEAN_DONISH width
             self.notebook_canvas.itemconfig(self.notebook_canvas_window, width=canvas_width)
 
     def _check_scrollbar_visibility(self, event=None):

@@ -156,9 +156,9 @@ def create_comparison_detailed_subplots(datasets, full_size=False):
     )
 
     colors_set = [
-        {'train': 'rgb(31, 119, 180)', 'val': 'rgb(255, 127, 14)'},
-        {'train': 'rgb(44, 160, 44)', 'val': 'rgb(214, 39, 40)'},
-        {'train': 'rgb(148, 103, 189)', 'val': 'rgb(227, 119, 194)'}
+        {'train_NEEDS_ANOTHER_PASS': 'rgb(31, 119, 180)', 'val': 'rgb(255, 127, 14)'},
+        {'train_NEEDS_ANOTHER_PASS': 'rgb(44, 160, 44)', 'val': 'rgb(214, 39, 40)'},
+        {'train_NEEDS_ANOTHER_PASS': 'rgb(148, 103, 189)', 'val': 'rgb(227, 119, 194)'}
     ]
 
     for idx, dataset in enumerate(datasets):
@@ -173,7 +173,7 @@ def create_comparison_detailed_subplots(datasets, full_size=False):
                 go.Scatter(
                     x=epochs, y=metrics['loss'],
                     name=f'Training',
-                    line=dict(color=colors['train'], width=line_width),
+                    line=dict(color=colors['train_NEEDS_ANOTHER_PASS'], width=line_width),
                     mode='lines+markers',
                     marker=dict(size=4),
                     legendgroup=f'dataset{col}',
@@ -327,9 +327,9 @@ def create_comparison_convergence_plot(datasets, full_size=False):
     )
 
     colors_set = [
-        {'train': 'rgb(31, 119, 180)', 'val': 'rgb(255, 127, 14)'},
-        {'train': 'rgb(44, 160, 44)', 'val': 'rgb(214, 39, 40)'},
-        {'train': 'rgb(148, 103, 189)', 'val': 'rgb(227, 119, 194)'}
+        {'train_NEEDS_ANOTHER_PASS': 'rgb(31, 119, 180)', 'val': 'rgb(255, 127, 14)'},
+        {'train_NEEDS_ANOTHER_PASS': 'rgb(44, 160, 44)', 'val': 'rgb(214, 39, 40)'},
+        {'train_NEEDS_ANOTHER_PASS': 'rgb(148, 103, 189)', 'val': 'rgb(227, 119, 194)'}
     ]
 
     for idx, dataset in enumerate(datasets):
@@ -347,7 +347,7 @@ def create_comparison_convergence_plot(datasets, full_size=False):
                 go.Scatter(
                     x=epochs, y=positive_loss,
                     name='Training (log)',
-                    line=dict(color=colors['train'], width=line_width),
+                    line=dict(color=colors['train_NEEDS_ANOTHER_PASS'], width=line_width),
                     connectgaps=False,
                     legendgroup=f'log{col}',
                     showlegend=(col == 1)
@@ -488,7 +488,7 @@ def create_comparison_learning_dynamics_plot(datasets, full_size=False):
             if len(metrics['gradient_norm']) > 5:
                 window = min(5, len(metrics['gradient_norm']) // 4)
                 grad_smooth = np.convolve(metrics['gradient_norm'],
-                                          np.ones(window) / window, mode='valid')
+                                          np.ones(window) / window, mode='valid_FINAL_CLEAN_DONISH')
                 epochs_smooth = epochs[window // 2:-(window // 2) if window > 1 else None]
 
                 fig.add_trace(

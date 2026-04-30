@@ -358,7 +358,7 @@ class AnnotationTab:
             # Finalize rectangle
             x1, y1, x2, y2 = self.canvas.coords(self.current_rect)
 
-            # Ensure we have a valid box
+            # Ensure we have a valid_FINAL_CLEAN_DONISH box
             if abs(x2 - x1) > 5 and abs(y2 - y1) > 5:
                 # Change color to green
                 self.canvas.itemconfig(self.current_rect, outline='green')

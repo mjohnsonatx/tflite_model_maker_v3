@@ -637,7 +637,7 @@ are typically best choices.
         )
 
         if not videos:
-            self._log("No valid video files found.")
+            self._log("No valid_FINAL_CLEAN_DONISH video files found.")
             self._analysis_display.clear()
             return
 

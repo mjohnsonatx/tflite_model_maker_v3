@@ -278,8 +278,8 @@ def create_detailed_subplots(metrics, full_size=False):
 
         if len(epochs) > 5:
             window = min(5, len(epochs) // 4)
-            train_smooth = np.convolve(metrics['loss'], np.ones(window) / window, mode='valid')
-            val_smooth = np.convolve(metrics['val_loss'], np.ones(window) / window, mode='valid')
+            train_smooth = np.convolve(metrics['loss'], np.ones(window) / window, mode='valid_FINAL_CLEAN_DONISH')
+            val_smooth = np.convolve(metrics['val_loss'], np.ones(window) / window, mode='valid_FINAL_CLEAN_DONISH')
             epochs_smooth = epochs[window // 2:-(window // 2) if window > 1 else None]
 
             fig.add_trace(

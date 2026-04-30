@@ -45,6 +45,7 @@ class PreviewValidateTab:
         self.reannotation_drag_start = None
         self.reannotation_guideline_ids = []
         self.reannotation_autosave = False
+        self.reannotation_dirty = False
         self.folder_labels_listbox = None
         self.folder_labels_summary_var = None
         self.setup_ui()
@@ -843,6 +844,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.reannotation_scale = scale
         self.reannotation_display_size = display_size
         self.reannotation_autosave = True
+        self.reannotation_dirty = False
         self.reannotation_photo_image = photo
         self.reannotation_canvas = tk.Canvas(
             self.preview_content_frame,
@@ -891,6 +893,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
     def create_preview_window(self, image_path):
         # Close previous window if exists
         if self.preview_window:
+            self._autosave_reannotation_if_needed()
             self._capture_preview_window_position()
             self.preview_window.destroy()
 
@@ -1670,6 +1673,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.reannotation_scale = scale
         self.reannotation_display_size = (display_width, display_height)
         self.reannotation_autosave = False
+        self.reannotation_dirty = False
 
         if scale < 1.0:
             pil_image = Image.fromarray(rgb_image).resize((display_width, display_height), Image.LANCZOS)
@@ -2051,6 +2055,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
                 ann['y1'], ann['y2'] = sorted((ann['y1'], ann['y2']))
                 self._update_reannotation_item(self.reannotation_active_index)
                 self.log_queue.put(f"Adjusted {ann['label']} annotation")
+                self.reannotation_dirty = True
                 self._autosave_reannotation_if_needed()
             self.reannotation_drag_mode = None
             self.reannotation_drag_start = None
@@ -2067,6 +2072,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
 
         label = self.reannotation_label_var.get().strip() or "object"
         self._add_reannotation_box(x1, y1, x2, y2, label, log=True)
+        self.reannotation_dirty = True
         self._autosave_reannotation_if_needed()
 
     def _add_reannotation_label(self):
@@ -2108,6 +2114,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self._select_reannotation_index(None)
 
         self.log_queue.put(f"Deleted {ann['label']} annotation from edit canvas")
+        self.reannotation_dirty = True
+        self._autosave_reannotation_if_needed()
         return "break"
 
     def rename_active_reannotation(self):
@@ -2137,6 +2145,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.label_memory.merge_labels([new_label], current_label=new_label)
         self._update_reannotation_item(index)
         self.log_queue.put(f"Renamed edit-canvas annotation: {old_label} -> {new_label}")
+        self.reannotation_dirty = True
+        self._autosave_reannotation_if_needed()
         return "break"
 
     def undo_reannotation(self):
@@ -2153,6 +2163,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
         else:
             self._select_reannotation_index(None)
         self.log_queue.put(f"Removed last re-annotation: {ann['label']}")
+        self.reannotation_dirty = True
+        self._autosave_reannotation_if_needed()
 
     def clear_reannotation(self):
         self.reannotation_annotations = []
@@ -2165,6 +2177,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
         self.reannotation_active_index = None
         self._hide_reannotation_guidelines()
         self.log_queue.put("Cleared re-annotations")
+        self.reannotation_dirty = True
+        self._autosave_reannotation_if_needed()
 
     def close_reannotation_window(self, refresh=True):
         image_file = None
@@ -2201,12 +2215,19 @@ Note: Deleted files are permanently removed. Use with caution!"""
         ET.SubElement(root, "segmented").text = "0"
 
         valid_annotations = 0
-        scale = self.reannotation_scale or 1.0
+        display_width, display_height = self.reannotation_display_size
+        if display_width > 0 and display_height > 0:
+            x_scale = w / display_width
+            y_scale = h / display_height
+        else:
+            scale = self.reannotation_scale or 1.0
+            x_scale = y_scale = 1 / scale
+
         for ann in self.reannotation_annotations:
-            xmin = max(0, min(w - 1, int(round(ann['x1'] / scale))))
-            ymin = max(0, min(h - 1, int(round(ann['y1'] / scale))))
-            xmax = max(0, min(w - 1, int(round(ann['x2'] / scale))))
-            ymax = max(0, min(h - 1, int(round(ann['y2'] / scale))))
+            xmin = max(0, min(w - 1, int(round(ann['x1'] * x_scale))))
+            ymin = max(0, min(h - 1, int(round(ann['y1'] * y_scale))))
+            xmax = max(0, min(w - 1, int(round(ann['x2'] * x_scale))))
+            ymax = max(0, min(h - 1, int(round(ann['y2'] * y_scale))))
 
             if xmax <= xmin or ymax <= ymin:
                 continue
@@ -2230,6 +2251,8 @@ Note: Deleted files are permanently removed. Use with caution!"""
     def _autosave_reannotation_if_needed(self, force=False):
         if not force and not self.reannotation_autosave:
             return "break"
+        if not force and not self.reannotation_dirty:
+            return "break"
         if not self.reannotation_image_path or self.reannotation_image is None:
             return "break"
 
@@ -2243,6 +2266,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self._write_xml_file(root, xml_path)
             self.current_preview_boxes, _ = self.parse_xml(xml_path)
             self._refresh_annotation_listbox_entries()
+            self.reannotation_dirty = False
             self.log_queue.put(f"Auto-saved box edits to: {Path(xml_path).name}")
         except Exception as exc:
             self.log_queue.put(f"Could not auto-save box edits: {exc}")
@@ -2279,12 +2303,13 @@ Note: Deleted files are permanently removed. Use with caution!"""
         root, valid_annotations, filename = self._build_reannotation_xml_root()
 
         if not valid_annotations:
-            messagebox.showwarning("Warning", "No valid annotations were drawn.")
+            messagebox.showwarning("Warning", "No valid_FINAL_CLEAN_DONISH annotations were drawn.")
             return
 
         xml_path = self._xml_path_for_image(filename)
         try:
             self._write_xml_file(root, xml_path)
+            self.reannotation_dirty = False
             self.log_queue.put(f"Saved re-annotations to: {Path(xml_path).name}")
             self.close_reannotation_window(refresh=False)
             self.scan_folder_labels()
@@ -2294,11 +2319,13 @@ Note: Deleted files are permanently removed. Use with caution!"""
 
     def previous_image(self):
         if self.current_index > 0:
+            self._autosave_reannotation_if_needed()
             self.current_index -= 1
             self.show_current_image()
 
     def next_image(self):
         if self.current_index < len(self.image_files) - 1:
+            self._autosave_reannotation_if_needed()
             self.current_index += 1
             self.show_current_image()
 
@@ -2356,6 +2383,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
 
     def stop_preview(self):
         if self.preview_window:
+            self._autosave_reannotation_if_needed()
             self._capture_preview_window_position()
             self.preview_window.destroy()
             self.preview_window = None
@@ -2363,6 +2391,7 @@ Note: Deleted files are permanently removed. Use with caution!"""
             self.preview_scroll_canvas = None
             self.reannotation_canvas = None
             self.reannotation_autosave = False
+            self.reannotation_dirty = False
 
     def toggle_auto_advance(self):
         self.auto_advance_var.set(not self.auto_advance_var.get())

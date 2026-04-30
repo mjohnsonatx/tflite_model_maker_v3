@@ -561,7 +561,7 @@ class DataCleaningTab:
         orphaned_images = set(image_files.keys()) - set(xml_files.keys())
         orphaned_xmls = set(xml_files.keys()) - set(image_files.keys())
 
-        self.log_queue.put(f"Found {len(paired)} valid image-XML pairs")
+        self.log_queue.put(f"Found {len(paired)} valid_FINAL_CLEAN_DONISH image-XML pairs")
         self.log_queue.put(f"Found {len(orphaned_images)} images without XML")
         self.log_queue.put(f"Found {len(orphaned_xmls)} XML files without images")
 
@@ -1595,7 +1595,7 @@ class DataCleaningTab:
     def sync_xml_filenames(self) -> None:
         """
         Synchronize XML filename and path fields with actual image files.
-        Process train, valid, and test_CLEAN folders if they exist.
+        Process train_NEEDS_ANOTHER_PASS, valid_FINAL_CLEAN_DONISH, and test_CLEAN folders if they exist.
         """
         try:
             source_dir = self.source_dir_var.get()
@@ -1604,7 +1604,7 @@ class DataCleaningTab:
                 return
 
             # Define folders to process
-            folders_to_process: List[str] = ['train', 'valid', 'test_CLEAN']
+            folders_to_process: List[str] = ['train_NEEDS_ANOTHER_PASS', 'valid_FINAL_CLEAN_DONISH', 'test_CLEAN']
 
             total_fixed = 0
             total_skipped = 0
@@ -1617,7 +1617,7 @@ class DataCleaningTab:
                 if not os.path.exists(folder_path):
                     self.log_queue.put(f"Folder '{folder}' not found, checking root directory...")
                     # If subfolder doesn't exist, try the root directory itself
-                    if folder == 'train' and os.path.exists(source_dir):
+                    if folder == 'train_NEEDS_ANOTHER_PASS' and os.path.exists(source_dir):
                         # Process root directory if no subfolders exist
                         folder_path = source_dir
                         folder = os.path.basename(source_dir)

@@ -50,12 +50,12 @@ EXPORT_BASE_DIR_DUMBBELL = 'dumbbell_models'
 
 TRAIN_DIR = os.path.join(DATA_DIR, 'train')
 VALID_DIR = os.path.join(DATA_DIR, 'valid')
-TEST_DIR = os.path.join(DATA_DIR, 'test_CLEAN')
+TEST_DIR = os.path.join(DATA_DIR, 'test')
 
 CACHE_DIR = r"D:\tflite_cache"
 
 BATCH_SIZE = 16
-EPOCHS = 150
+EPOCHS = 225
 
 BACKBONE = 'efficientnetv2_b3_imagenet'
 ARCHITECTURE = 'efficientdet_lite0'
@@ -70,8 +70,8 @@ HPARAMS = {
     'image_size': 320,
     'nms_configs': {
         'method': 'gaussian',
-        'iou_thresh': 0.4,
-        'score_thresh': 0.6,
+        'iou_thresh': 0.5,
+        'score_thresh': 0.4,
         'sigma': 0.5,
         'pyfunc': False,
         'max_nms_inputs': 5000,
@@ -298,7 +298,7 @@ if __name__ == "__main__":
         print(f"Test: {test.size} images\n")
 
         # -----------------------------
-        # Create / train model
+        # Create / train_NEEDS_ANOTHER_PASS model
         # -----------------------------
         print("Initializing model...")
         model = object_detector.create(

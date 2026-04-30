@@ -75,7 +75,7 @@ class OptimizedModelTrainer:
         """
         Train with proper epoch continuation and checkpoint management.
 
-        This directly calls model.fit() instead of model_spec.train()
+        This directly calls model.fit() instead of model_spec.train_NEEDS_ANOTHER_PASS()
         so we can inject our custom checkpoint callback.
         """
         # Create model
@@ -127,7 +127,7 @@ class OptimizedModelTrainer:
             train_steps = len(self.train_data) // batch_size
             val_steps = len(self.valid_data) // batch_size
 
-            # Setup model as train_lib.train() does
+            # Setup model as train_lib.train_NEEDS_ANOTHER_PASS() does
             from tensorflow_examples.lite.model_maker.core.task.object_detector import train
             train.setup_model(self.model.model, self.model_spec.config)
             train.init_experimental(self.model_spec.config)

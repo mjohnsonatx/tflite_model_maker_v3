@@ -177,7 +177,7 @@ class ComparisonTableOnly:
         print(f"⚡ Model loading completed in {elapsed_time:.2f} seconds")
 
         if not self.datasets:
-            print("❌ No valid datasets loaded")
+            print("❌ No valid_FINAL_CLEAN_DONISH datasets loaded")
             return False
 
         return True
@@ -1013,7 +1013,7 @@ class ComparisonTableOnly:
 #                 print(f"⚠️ Error loading {config['name']}: {e}")
 #
 #         if not self.datasets:
-#             print("❌ No valid datasets loaded")
+#             print("❌ No valid_FINAL_CLEAN_DONISH datasets loaded")
 #             return False
 #
 #         return True

@@ -168,9 +168,18 @@ When you load multiple logs, the visualizer overlays their curves on the same ax
 ### Export
 
 Results can be exported as:
+- **CSV** - one self-contained table with epoch metrics, evaluation metrics, model specs, hyperparameters, and summary stats, ready to paste into a language model.
 - **Interactive HTML** — hover, zoom, and pan on every chart.
 - **Static PNG** — for embedding in documents.
 - **PDF report** — multi-page document with all plots and the full model spec card.
+
+CSV export can be run from the visualizer menu or directly:
+
+```bash
+python run_visualizer.py --export-csv path/to/training_log.txt
+python run_visualizer.py --export-csv --compare path/to/log1.txt path/to/log2.txt --out visualizer_data.csv
+python run_visualizer.py --export-csv --recent path/to/models 10 --out recent_models.csv
+```
 
 ---
 

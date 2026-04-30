@@ -143,7 +143,7 @@ class OptimizedCheckpointManager:
             os.makedirs(weights_path, exist_ok=True)
             model.save_weights(weights_path)
 
-            # Save optimizer state using tf.train.Checkpoint
+            # Save optimizer state using tf.train_NEEDS_ANOTHER_PASS.Checkpoint
             if model.optimizer is not None:
                 optimizer_path = os.path.join(checkpoint_path, 'optimizer.ckpt')
                 ckpt = tf.train.Checkpoint(
