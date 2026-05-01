@@ -13,7 +13,6 @@ __pycache__/
 /dumbbell_models/
 .env
 .env.*
-!.env.example
 .venv/
 training_visualizer_data.csv
 efficientdet_hparam_tuning_guide.md

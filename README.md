@@ -7,7 +7,7 @@ A desktop application for the complete end-to-end workflow of building TensorFlo
 Create your private environment file first:
 
 ```bash
-copy .env.example .env
+copy .env
 ```
 
 Fill `.env` with your local dataset paths, model settings, and hyperparameters. The real `.env` file is ignored by git so those values stay out of the public repo.
