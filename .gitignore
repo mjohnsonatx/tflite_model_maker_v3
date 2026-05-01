@@ -23,3 +23,4 @@ training_reports/
 codex_test_tmp/
 tmp*/
 .private_artifacts/
+/db_final_data/
