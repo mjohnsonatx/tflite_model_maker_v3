@@ -14,6 +14,7 @@ __pycache__/
 .env
 .env.*
 .venv/
+.venv
 training_visualizer_data.csv
 efficientdet_hparam_tuning_guide.md
 world_filter_review*.csv
@@ -23,3 +24,6 @@ codex_test_tmp/
 tmp*/
 .private_artifacts/
 /db_final_data/
+world_space_kalman_filter_private.py
+world_filter_cache*.sqlite
+*_world_filter_cache.sqlite

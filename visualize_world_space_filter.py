@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.9
 """
-world_ema_viz.py — schema-flexible WORLD_* log review (lazy-rendered).
+world_ema_viz.py â€” schema-flexible WORLD_* log review (lazy-rendered).
 
 Views: Group / Individual / 3D.  Only the visible plots are mounted; hidden
 ones are Plotly.purge()'d so WebGL contexts are released.
@@ -8,16 +8,19 @@ ones are Plotly.purge()'d so WebGL contexts are released.
 
 import argparse
 import codecs
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import csv
+import hashlib
 import html
 import io
 import json
 import math
 import re
+import sqlite3
 import sys
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -26,6 +29,14 @@ from plotly.subplots import make_subplots
 
 AXES = ("X", "Y", "Z")
 NUM_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+SKELETON_RAW_COLOR = "#374151"
+SKELETON_LOGGED_FILTERED_COLOR = "#2563eb"
+SKELETON_SIM_FILTERED_COLOR = "#f97316"
+
+
+def _emit_progress(progress_callback: Optional[Callable[[str], None]], message: str) -> None:
+    if progress_callback:
+        progress_callback(message)
 
 SKELETON_CONNECTIONS = (
     ("nose", "leftEyeInner"),
@@ -164,985 +175,24 @@ class FilterAxisState:
 
 
 class WorldSpaceKalmanFilter:
-    """Scalar 3-state Extended Kalman Filter ported from the Android filter.
-
-    The Android implementation is stateless: every previous state and
-    covariance value is passed in, and the next state is returned.  This Python
-    version preserves that contract so the simulator can keep independent
-    state for every ``(landmark, axis)`` key while using the same coefficients
-    exposed in the HTML report.
-    """
-
-    MAX_ACCELERATION = 500_000.0
-    MIN_ACCELERATION = -500_000.0
-    MAX_VELOCITY = 70_000.0
-    MIN_VELOCITY = -70_000.0
-    MAX_POSITION_CHANGE = 10_000.0
-
-    MIN_DT = 0.008
-    MAX_DT = 0.067
-    MIN_COV = 1e-8
-    MAX_COV = 1e6
-    MIN_GAIN = 1e-8
-    MAX_GAIN = 10.0
-    MAX_INNOVATION = 2_000.0
-    MAX_NIS = 2_000_000.0
-    MIN_NOISE = 1e-6
-    MAX_NOISE = 50.0
-    MIN_ALPHA = 0.001
-    MAX_ALPHA = 0.999
-
-    MAX_VELOCITY_CHANGE_RATE = 700_000.0
-    MAX_ACCEL_CHANGE_RATE = 12_000_000.0
-    MIN_ADAPTIVE_Q_POS = 0.0001
-    MIN_ADAPTIVE_Q_VEL = 0.0001
-    MIN_ADAPTIVE_Q_ACCEL = 0.00001
-    MAX_ADAPTIVE_Q_POS = 50.0
-    MAX_ADAPTIVE_Q_VEL = 50.0
-    MAX_ADAPTIVE_Q_ACCEL = 20.0
-
-    ADAPTIVE_Q_SCALING_MIN = 0.001
-    ADAPTIVE_Q_SCALING_MAX = 10.0
-    DYNAMIC_R_MULTIPLIER_MIN = 0.1
-    DYNAMIC_R_MULTIPLIER_MAX = 10.0
-    ONE_MINUS_GAIN_MIN = -6.0
-    ONE_MINUS_GAIN_MAX = 4.0
-    INNOVATION_COVARIANCE_MIN_FACTOR = 10.0
-
-    SOFT_SATURATE_KNEE_RATIO = 0.8
-    ALPHA_SLOPE_MIN = 0.01
-    ALPHA_SLOPE_MAX = 2.0
-    ALPHA_MIDPOINT_MIN = 0.1
-    ALPHA_MIDPOINT_MAX = 100.0
-    INITIAL_COV_MULTIPLIER = 10.0
-    FALLBACK_ZERO_FLOAT = 0.0
+    """Runtime adapter for the ignored proprietary Kalman implementation."""
 
     def __init__(self, settings: PoseDetectionSettings):
         self.settings = settings
-
-    @staticmethod
-    def _finite(value: float, fallback: float = 0.0) -> float:
-        value = float(value)
-        return value if math.isfinite(value) else float(fallback)
-
-    @classmethod
-    def _coerce(
-        cls,
-        value: float,
-        min_value: float,
-        max_value: float,
-        bypass_coercion: bool = False,
-        fallback: float = 0.0,
-    ) -> float:
-        value = cls._finite(value, fallback)
-        if bypass_coercion:
-            return value
-        return min(max(value, min_value), max_value)
-
-    @staticmethod
-    def _exp(value: float) -> float:
-        return math.exp(min(max(float(value), -80.0), 80.0))
-
-    @classmethod
-    def _sigmoid(cls, value: float) -> float:
-        if value >= 0.0:
-            z = cls._exp(-value)
-            return 1.0 / (1.0 + z)
-        z = cls._exp(value)
-        return z / (1.0 + z)
-
-    @classmethod
-    def _soft_saturate(cls, value: float, limit: float) -> float:
-        limit = abs(cls._finite(limit, 0.0))
-        value = cls._finite(value, 0.0)
-        if limit <= 0.0:
-            return 0.0
-        abs_value = abs(value)
-        knee = limit * cls.SOFT_SATURATE_KNEE_RATIO
-        if abs_value <= knee:
-            return value
-        compression_range = limit - knee
-        if compression_range <= 0.0:
-            return math.copysign(limit, value)
-        excess = abs_value - knee
-        compressed = knee + compression_range * (
-            1.0 - cls._exp(-excess / compression_range)
-        )
-        return math.copysign(compressed, value)
-
-    def _sanitize_inputs(
-        self,
-        measuredPos: float,
-        dt: float,
-        previousPos: float,
-        previousVel: float,
-        previousAccel: float,
-        previousCovPosPos: float,
-        previousCovPosVel: float,
-        previousCovPosAccel: float,
-        previousCovVelPos: float,
-        previousCovVelVel: float,
-        previousCovVelAccel: float,
-        previousCovAccelPos: float,
-        previousCovAccelVel: float,
-        previousCovAccelAccel: float,
-        baseProcessNoisePos: float,
-        baseProcessNoiseVel: float,
-        baseProcessNoiseAccel: float,
-        baseMeasurementNoise: float,
-        adaptiveQScalingFactor: float,
-        lastInnovationNormSquared: float,
-        positionAlphaMin: float,
-        positionAlphaMax: float,
-        velocityAlphaMin: float,
-        velocityAlphaMax: float,
-        accelerationAlphaMin: float,
-        accelerationAlphaMax: float,
-        bypassCoercion: bool,
-    ) -> Dict[str, float]:
-        safe_dt = self._coerce(dt, self.MIN_DT, self.MAX_DT, False, self.MIN_DT)
-        safe_previous_pos = self._finite(previousPos, self.FALLBACK_ZERO_FLOAT)
-        safe_pos_alpha_min = self._coerce(
-            positionAlphaMin, self.MIN_ALPHA, self.MAX_ALPHA, bypassCoercion,
-            self.MIN_ALPHA,
-        )
-        safe_vel_alpha_min = self._coerce(
-            velocityAlphaMin, self.MIN_ALPHA, self.MAX_ALPHA, bypassCoercion,
-            self.MIN_ALPHA,
-        )
-        safe_accel_alpha_min = self._coerce(
-            accelerationAlphaMin, self.MIN_ALPHA, self.MAX_ALPHA, bypassCoercion,
-            self.MIN_ALPHA,
-        )
-
-        return {
-            "dt": safe_dt,
-            "measuredPos": self._finite(measuredPos, safe_previous_pos),
-            "previousPos": safe_previous_pos,
-            "previousVel": self._coerce(
-                previousVel, self.MIN_VELOCITY, self.MAX_VELOCITY,
-                bypassCoercion,
-            ),
-            "previousAccel": self._coerce(
-                previousAccel, self.MIN_ACCELERATION, self.MAX_ACCELERATION,
-                bypassCoercion,
-            ),
-            "baseProcessNoisePos": self._coerce(
-                baseProcessNoisePos, self.MIN_NOISE, self.MAX_NOISE,
-                bypassCoercion, self.MIN_NOISE,
-            ),
-            "baseProcessNoiseVel": self._coerce(
-                baseProcessNoiseVel, self.MIN_NOISE, self.MAX_NOISE,
-                bypassCoercion, self.MIN_NOISE,
-            ),
-            "baseProcessNoiseAccel": self._coerce(
-                baseProcessNoiseAccel, self.MIN_NOISE, self.MAX_NOISE,
-                bypassCoercion, self.MIN_NOISE,
-            ),
-            "baseMeasurementNoise": self._coerce(
-                baseMeasurementNoise, self.MIN_NOISE, self.MAX_NOISE,
-                bypassCoercion, self.MIN_NOISE,
-            ),
-            "adaptiveQScaling": self._coerce(
-                adaptiveQScalingFactor,
-                self.ADAPTIVE_Q_SCALING_MIN,
-                self.ADAPTIVE_Q_SCALING_MAX,
-                bypassCoercion,
-                self.ADAPTIVE_Q_SCALING_MIN,
-            ),
-            "lastNIS": self._coerce(
-                lastInnovationNormSquared, self.FALLBACK_ZERO_FLOAT,
-                self.MAX_NIS, bypassCoercion,
-            ),
-            "posAlphaMin": safe_pos_alpha_min,
-            "posAlphaMax": self._coerce(
-                positionAlphaMax, safe_pos_alpha_min, self.MAX_ALPHA,
-                bypassCoercion, self.MAX_ALPHA,
-            ),
-            "velAlphaMin": safe_vel_alpha_min,
-            "velAlphaMax": self._coerce(
-                velocityAlphaMax, safe_vel_alpha_min, self.MAX_ALPHA,
-                bypassCoercion, self.MAX_ALPHA,
-            ),
-            "accelAlphaMin": safe_accel_alpha_min,
-            "accelAlphaMax": self._coerce(
-                accelerationAlphaMax, safe_accel_alpha_min, self.MAX_ALPHA,
-                bypassCoercion, self.MAX_ALPHA,
-            ),
-            "covPosPos": self._coerce(
-                previousCovPosPos, self.MIN_COV, self.MAX_COV, bypassCoercion,
-                self.MIN_COV,
-            ),
-            "covVelVel": self._coerce(
-                previousCovVelVel, self.MIN_COV, self.MAX_COV, bypassCoercion,
-                self.MIN_COV,
-            ),
-            "covAccelAccel": self._coerce(
-                previousCovAccelAccel, self.MIN_COV, self.MAX_COV,
-                bypassCoercion, self.MIN_COV,
-            ),
-            "covPosVel": self._finite(previousCovPosVel),
-            "covVelPos": self._finite(previousCovVelPos),
-            "covPosAccel": self._finite(previousCovPosAccel),
-            "covAccelPos": self._finite(previousCovAccelPos),
-            "covVelAccel": self._finite(previousCovVelAccel),
-            "covAccelVel": self._finite(previousCovAccelVel),
-        }
-
-    def _initialize_filter(
-        self,
-        safeDt: float,
-        safeMeasuredPos: float,
-        safeBaseMeasurementNoise: float,
-        safeBaseProcessNoiseVel: float,
-        safeBaseProcessNoiseAccel: float,
-        bypassCoercion: bool,
-    ) -> FilterResult:
-        initial_velocity = self._coerce(
-            safeMeasuredPos / safeDt,
-            self.MIN_VELOCITY,
-            self.MAX_VELOCITY,
-            bypassCoercion,
-        )
-        return FilterResult(
-            position=safeMeasuredPos,
-            velocity=initial_velocity,
-            acceleration=self.FALLBACK_ZERO_FLOAT,
-            covPosPos=safeBaseMeasurementNoise * self.INITIAL_COV_MULTIPLIER,
-            covPosVel=self.FALLBACK_ZERO_FLOAT,
-            covPosAccel=self.FALLBACK_ZERO_FLOAT,
-            covVelPos=self.FALLBACK_ZERO_FLOAT,
-            covVelVel=safeBaseProcessNoiseVel * self.INITIAL_COV_MULTIPLIER,
-            covVelAccel=self.FALLBACK_ZERO_FLOAT,
-            covAccelAccel=safeBaseProcessNoiseAccel * self.INITIAL_COV_MULTIPLIER,
-            innovationNormSquared=self.FALLBACK_ZERO_FLOAT,
-        )
-
-    def _compute_adaptive_process_noise(
-        self,
-        safeBaseProcessNoisePos: float,
-        safeBaseProcessNoiseVel: float,
-        safeBaseProcessNoiseAccel: float,
-        safeLastNIS: float,
-        safeAdaptiveQScaling: float,
-        safePreviousAccel: float,
-        accelerationSaturationNoiseReduction: float,
-        accelerationSaturationThreshold: float,
-        accelerationAdaptiveScalingFactor: float,
-        bypassCoercion: bool,
-    ) -> Tuple[float, float, float]:
-        common = 1.0 + math.log1p(max(safeLastNIS * safeAdaptiveQScaling, 0.0))
-        adaptive_q_pos = self._coerce(
-            safeBaseProcessNoisePos * common,
-            self.MIN_ADAPTIVE_Q_POS,
-            self.MAX_ADAPTIVE_Q_POS,
-            bypassCoercion,
-        )
-        adaptive_q_vel = self._coerce(
-            safeBaseProcessNoiseVel * common,
-            self.MIN_ADAPTIVE_Q_VEL,
-            self.MAX_ADAPTIVE_Q_VEL,
-            bypassCoercion,
-        )
-        saturation_factor = (
-            accelerationSaturationNoiseReduction
-            if abs(safePreviousAccel) >=
-            self.MAX_ACCELERATION * accelerationSaturationThreshold
-            else 1.0
-        )
-        accel_common = 1.0 + math.log1p(max(
-            safeLastNIS * safeAdaptiveQScaling * accelerationAdaptiveScalingFactor,
-            0.0,
-        ))
-        adaptive_q_accel = self._coerce(
-            safeBaseProcessNoiseAccel * accel_common * saturation_factor,
-            self.MIN_ADAPTIVE_Q_ACCEL,
-            self.MAX_ADAPTIVE_Q_ACCEL,
-            bypassCoercion,
-        )
-        return adaptive_q_pos, adaptive_q_vel, adaptive_q_accel
-
-    def _estimate_acceleration(
-        self,
-        safeMeasuredPos: float,
-        safePreviousPos: float,
-        safePreviousVel: float,
-        safePreviousAccel: float,
-        safeDt: float,
-        accelerationDecayRate: float,
-        bypassCoercion: bool,
-    ) -> Tuple[float, float]:
-        measured_velocity = self._coerce(
-            (safeMeasuredPos - safePreviousPos) / safeDt,
-            self.MIN_VELOCITY,
-            self.MAX_VELOCITY,
-            bypassCoercion,
-        )
-        velocity_change = measured_velocity - safePreviousVel
-        max_velocity_change = self.MAX_VELOCITY_CHANGE_RATE * safeDt
-        limited_velocity_change = self._coerce(
-            self._soft_saturate(velocity_change, max_velocity_change),
-            -max_velocity_change,
-            max_velocity_change,
-            bypassCoercion,
-        )
-        raw_estimated_accel = limited_velocity_change / safeDt
-        accel_decay_factor = self._exp(-safeDt * accelerationDecayRate)
-        decayed_previous_accel = safePreviousAccel * accel_decay_factor
-        blend_factor = 1.0 - accel_decay_factor
-        conservative_accel = (
-            raw_estimated_accel * blend_factor +
-            decayed_previous_accel * (1.0 - blend_factor)
-        )
-        estimated_accel = self._coerce(
-            self._soft_saturate(conservative_accel, self.MAX_ACCELERATION),
-            self.MIN_ACCELERATION,
-            self.MAX_ACCELERATION,
-            bypassCoercion,
-        )
-        return estimated_accel, measured_velocity
-
-    def _perform_prediction(
-        self,
-        safePreviousPos: float,
-        safePreviousVel: float,
-        safePreviousAccel: float,
-        safeDt: float,
-        safeCovPosPos: float,
-        safeCovPosVel: float,
-        safeCovVelPos: float,
-        safeCovPosAccel: float,
-        safeCovAccelPos: float,
-        safeCovVelVel: float,
-        safeCovVelAccel: float,
-        safeCovAccelVel: float,
-        safeCovAccelAccel: float,
-        adaptiveQpos: float,
-        adaptiveQvel: float,
-        adaptiveQaccel: float,
-        bypassCoercion: bool,
-    ) -> Dict[str, float]:
-        predicted_pos = (
-            safePreviousPos + safePreviousVel * safeDt +
-            0.5 * safePreviousAccel * safeDt * safeDt
-        )
-        predicted_vel = self._coerce(
-            safePreviousVel + safePreviousAccel * safeDt,
-            self.MIN_VELOCITY,
-            self.MAX_VELOCITY,
-            bypassCoercion,
-        )
-        dt_squared = safeDt * safeDt
-        half_dt_squared = 0.5 * dt_squared
-        predicted_cpp = self._coerce(
-            safeCovPosPos + safeDt * (safeCovPosVel + safeCovVelPos) +
-            dt_squared * safeCovVelVel +
-            half_dt_squared * (safeCovPosAccel + safeCovAccelPos) +
-            adaptiveQpos,
-            self.MIN_COV,
-            self.MAX_COV,
-            bypassCoercion,
-        )
-        predicted_cpv = (
-            safeCovPosVel + safeDt * safeCovVelVel +
-            half_dt_squared * safeCovVelAccel
-        )
-        predicted_cpa = (
-            safeCovPosAccel + safeDt * safeCovVelAccel +
-            half_dt_squared * safeCovAccelAccel
-        )
-        predicted_cvv = self._coerce(
-            safeCovVelVel + safeDt * (safeCovVelAccel + safeCovAccelVel) +
-            adaptiveQvel,
-            self.MIN_COV,
-            self.MAX_COV,
-            bypassCoercion,
-        )
-        predicted_cva = safeCovVelAccel + safeDt * safeCovAccelAccel
-        predicted_caa = self._coerce(
-            safeCovAccelAccel + adaptiveQaccel,
-            self.MIN_COV,
-            self.MAX_COV,
-            bypassCoercion,
-        )
-        return {
-            "predictedPos": predicted_pos,
-            "predictedVel": predicted_vel,
-            "predictedCpp": predicted_cpp,
-            "predictedCpv": predicted_cpv,
-            "predictedCvp": predicted_cpv,
-            "predictedCpa": predicted_cpa,
-            "predictedCap": predicted_cpa,
-            "predictedCvv": predicted_cvv,
-            "predictedCva": predicted_cva,
-            "predictedCav": predicted_cva,
-            "predictedCaa": predicted_caa,
-        }
-
-    def _compute_kalman_gains(
-        self,
-        predictedPos: float,
-        predictedCpp: float,
-        predictedCvp: float,
-        predictedCap: float,
-        safeMeasuredPos: float,
-        safeBaseMeasurementNoise: float,
-        dynamicRInnovationSlope: float,
-        dynamicRInnovationThreshold: float,
-        gainAttenuationRate: float,
-        bypassCoercion: bool,
-    ) -> Dict[str, float]:
-        innovation = self._coerce(
-            safeMeasuredPos - predictedPos,
-            -self.MAX_INNOVATION,
-            self.MAX_INNOVATION,
-            bypassCoercion,
-        )
-        dynamic_r_multiplier = self._coerce(
-            self._sigmoid(
-                dynamicRInnovationSlope *
-                (abs(innovation) - dynamicRInnovationThreshold)
-            ),
-            self.DYNAMIC_R_MULTIPLIER_MIN,
-            self.DYNAMIC_R_MULTIPLIER_MAX,
-            bypassCoercion,
-            1.0,
-        )
-        innovation_covariance = self._coerce(
-            predictedCpp + safeBaseMeasurementNoise * dynamic_r_multiplier,
-            self.MIN_COV * self.INNOVATION_COVARIANCE_MIN_FACTOR,
-            self.MAX_COV,
-            bypassCoercion,
-        )
-        new_nis = self._coerce(
-            (innovation * innovation) / innovation_covariance,
-            self.FALLBACK_ZERO_FLOAT,
-            self.MAX_NIS,
-            bypassCoercion,
-        )
-        gain_pos = self._coerce(
-            predictedCpp / innovation_covariance,
-            self.MIN_GAIN,
-            self.MAX_GAIN,
-            bypassCoercion,
-        )
-        gain_attenuation = (
-            1.0 - self._exp(-gainAttenuationRate * innovation * innovation)
-            if gainAttenuationRate > 0.0
-            else 1.0
-        )
-        gain_vel = self._coerce(
-            self._soft_saturate(
-                (predictedCvp / innovation_covariance) * gain_attenuation,
-                self.MAX_GAIN,
-            ),
-            -self.MAX_GAIN,
-            self.MAX_GAIN,
-            bypassCoercion,
-        )
-        gain_accel = self._coerce(
-            self._soft_saturate(
-                (predictedCap / innovation_covariance) *
-                gain_attenuation * gain_attenuation,
-                self.MAX_GAIN,
-            ),
-            -self.MAX_GAIN,
-            self.MAX_GAIN,
-            bypassCoercion,
-        )
-        return {
-            "gainPos": gain_pos,
-            "gainVel": gain_vel,
-            "gainAccel": gain_accel,
-            "innovation": innovation,
-            "newInnovationNormSquared": new_nis,
-        }
-
-    def _perform_state_update(
-        self,
-        safePreviousPos: float,
-        safePreviousAccel: float,
-        safeDt: float,
-        predictedPos: float,
-        predictedVel: float,
-        gainPos: float,
-        gainVel: float,
-        gainAccel: float,
-        innovation: float,
-        estimatedAccel: float,
-        accelerationInnovationContributionFactor: float,
-        updateDecayTimeConstant: float,
-        bypassCoercion: bool,
-    ) -> Tuple[float, float, float]:
-        raw_updated_pos = predictedPos + gainPos * innovation
-        updated_vel = self._coerce(
-            predictedVel + gainVel * innovation,
-            self.MIN_VELOCITY,
-            self.MAX_VELOCITY,
-            bypassCoercion,
-        )
-        accel_innovation = (
-            gainAccel * innovation * accelerationInnovationContributionFactor
-        )
-        decay_factor = self._exp(-safeDt * updateDecayTimeConstant)
-        raw_updated_accel = (estimatedAccel + accel_innovation) * decay_factor
-        max_change = self.MAX_ACCEL_CHANGE_RATE * safeDt
-        limited_change = self._coerce(
-            self._soft_saturate(raw_updated_accel - safePreviousAccel, max_change),
-            -max_change,
-            max_change,
-            bypassCoercion,
-        )
-        updated_accel = self._coerce(
-            safePreviousAccel + limited_change,
-            self.MIN_ACCELERATION,
-            self.MAX_ACCELERATION,
-            bypassCoercion,
-        )
-        position_change = raw_updated_pos - safePreviousPos
-        if abs(position_change) > self.MAX_POSITION_CHANGE and not bypassCoercion:
-            raw_updated_pos = (
-                safePreviousPos +
-                math.copysign(self.MAX_POSITION_CHANGE, position_change)
+        try:
+            from world_space_kalman_filter_private import (
+                WorldSpaceKalmanFilter as PrivateWorldSpaceKalmanFilter,
             )
-        return raw_updated_pos, updated_vel, updated_accel
+        except ImportError as exc:
+            raise RuntimeError(
+                "Missing world_space_kalman_filter_private.py. "
+                "This proprietary file is intentionally git-ignored; restore it "
+                "locally to run simulation playback."
+            ) from exc
+        self._impl = PrivateWorldSpaceKalmanFilter(settings)
 
-    def _velocity_alpha(
-        self,
-        innovation: float,
-        velocityAlphaMin: float,
-        velocityAlphaMax: float,
-        velocityAlphaSlope: float,
-        velocityAlphaMidpoint: float,
-        bypassCoercion: bool,
-    ) -> float:
-        x = self._coerce(
-            abs(innovation), self.FALLBACK_ZERO_FLOAT, self.MAX_INNOVATION,
-            bypassCoercion,
-        )
-        slope = self._coerce(
-            velocityAlphaSlope, self.ALPHA_SLOPE_MIN, self.ALPHA_SLOPE_MAX,
-            bypassCoercion, self.ALPHA_SLOPE_MIN,
-        )
-        midpoint = self._coerce(
-            velocityAlphaMidpoint, self.ALPHA_MIDPOINT_MIN,
-            self.ALPHA_MIDPOINT_MAX, bypassCoercion, self.ALPHA_MIDPOINT_MIN,
-        )
-        logistic = self._sigmoid(slope * (x - midpoint))
-        return velocityAlphaMin + (velocityAlphaMax - velocityAlphaMin) * (
-            1.0 - logistic
-        )
-
-    def _acceleration_alpha(
-        self,
-        innovation: float,
-        accelerationAlphaMin: float,
-        accelerationAlphaMax: float,
-        accelerationAlphaSlope: float,
-        accelerationAlphaMidpoint: float,
-        accelerationAlphaDecay: float,
-        bypassCoercion: bool,
-    ) -> float:
-        x = self._coerce(
-            abs(innovation), self.FALLBACK_ZERO_FLOAT, self.MAX_INNOVATION,
-            bypassCoercion,
-        )
-        slope = self._coerce(
-            accelerationAlphaSlope, self.ALPHA_SLOPE_MIN, self.ALPHA_SLOPE_MAX,
-            bypassCoercion, self.ALPHA_SLOPE_MIN,
-        )
-        midpoint = self._coerce(
-            accelerationAlphaMidpoint, self.ALPHA_MIDPOINT_MIN,
-            self.ALPHA_MIDPOINT_MAX, bypassCoercion, self.ALPHA_MIDPOINT_MIN,
-        )
-        logistic = self._sigmoid(slope * (x - midpoint))
-        decay_factor = self._exp(-accelerationAlphaDecay * innovation * innovation)
-        return (
-            accelerationAlphaMin +
-            (accelerationAlphaMax - accelerationAlphaMin) *
-            (1.0 - logistic) * decay_factor
-        )
-
-    def _perform_smoothing(
-        self,
-        safePreviousPos: float,
-        safePreviousVel: float,
-        safePreviousAccel: float,
-        safeDt: float,
-        safePosAlphaMin: float,
-        safePosAlphaMax: float,
-        safeVelAlphaMin: float,
-        safeVelAlphaMax: float,
-        safeAccelAlphaMin: float,
-        safeAccelAlphaMax: float,
-        updatedPos: float,
-        updatedVel: float,
-        updatedAccel: float,
-        innovation: float,
-        positionAlphaDecay: float,
-        velocityAlphaMidpoint: float,
-        velocityAlphaSlope: float,
-        accelerationAlphaMidpoint: float,
-        accelerationAlphaSlope: float,
-        accelerationAlphaDecay: float,
-        smoothingDecayTimeConstant: float,
-        accelerationBoundsThreshold: float,
-        accelerationBoundsDecayFactor: float,
-        bypassCoercion: bool,
-    ) -> Tuple[float, float, float]:
-        position_alpha = self._coerce(
-            safePosAlphaMin + (safePosAlphaMax - safePosAlphaMin) *
-            self._exp(-positionAlphaDecay * innovation * innovation),
-            self.MIN_ALPHA,
-            self.MAX_ALPHA,
-            bypassCoercion,
-        )
-        smoothed_pos = (
-            position_alpha * safePreviousPos +
-            (1.0 - position_alpha) * updatedPos
-        )
-        velocity_alpha = self._coerce(
-            self._velocity_alpha(
-                innovation,
-                safeVelAlphaMin,
-                safeVelAlphaMax,
-                velocityAlphaSlope,
-                velocityAlphaMidpoint,
-                bypassCoercion,
-            ),
-            self.MIN_ALPHA,
-            self.MAX_ALPHA,
-            bypassCoercion,
-        )
-        smoothed_vel = self._coerce(
-            velocity_alpha * safePreviousVel + (1.0 - velocity_alpha) * updatedVel,
-            self.MIN_VELOCITY,
-            self.MAX_VELOCITY,
-            bypassCoercion,
-        )
-        acceleration_alpha = self._coerce(
-            self._acceleration_alpha(
-                innovation,
-                safeAccelAlphaMin,
-                safeAccelAlphaMax,
-                accelerationAlphaSlope,
-                accelerationAlphaMidpoint,
-                accelerationAlphaDecay,
-                bypassCoercion,
-            ),
-            self.MIN_ALPHA,
-            self.MAX_ALPHA,
-            bypassCoercion,
-        )
-        smoothing_decay = self._exp(-safeDt * smoothingDecayTimeConstant)
-        decayed_previous_accel = safePreviousAccel * smoothing_decay
-        smoothed_accel = (
-            acceleration_alpha * decayed_previous_accel +
-            (1.0 - acceleration_alpha) * updatedAccel
-        )
-        if abs(safePreviousAccel) >= (
-            self.MAX_ACCELERATION * accelerationBoundsThreshold
-        ):
-            smoothed_accel *= accelerationBoundsDecayFactor
-        smoothed_accel = self._coerce(
-            smoothed_accel,
-            self.MIN_ACCELERATION,
-            self.MAX_ACCELERATION,
-            bypassCoercion,
-        )
-        return smoothed_pos, smoothed_vel, smoothed_accel
-
-    def _update_covariances(
-        self,
-        predictedCpp: float,
-        predictedCpv: float,
-        predictedCpa: float,
-        predictedCvp: float,
-        predictedCvv: float,
-        predictedCva: float,
-        predictedCaa: float,
-        gainPos: float,
-        gainVel: float,
-        gainAccel: float,
-        bypassCoercion: bool,
-    ) -> Tuple[float, float, float, float, float, float, float]:
-        one_minus_gain_pos = self._coerce(
-            1.0 - gainPos,
-            self.ONE_MINUS_GAIN_MIN,
-            self.ONE_MINUS_GAIN_MAX,
-            bypassCoercion,
-        )
-        updated_cpp = self._coerce(
-            one_minus_gain_pos * predictedCpp,
-            self.MIN_COV,
-            self.MAX_COV,
-            bypassCoercion,
-        )
-        updated_cpv = (1.0 - gainPos) * predictedCpv
-        updated_cpa = (1.0 - gainPos) * predictedCpa
-        updated_cvp = predictedCvp - gainVel * predictedCpp
-        updated_cvv = self._coerce(
-            predictedCvv - gainVel * predictedCpv,
-            self.MIN_COV,
-            self.MAX_COV,
-            bypassCoercion,
-        )
-        updated_cva = predictedCva - gainVel * predictedCpa
-        updated_caa = self._coerce(
-            predictedCaa - gainAccel * predictedCpa,
-            self.MIN_COV,
-            self.MAX_COV,
-            bypassCoercion,
-        )
-        return (
-            updated_cpp,
-            updated_cpv,
-            updated_cpa,
-            updated_cvp,
-            updated_cvv,
-            updated_cva,
-            updated_caa,
-        )
-
-    def filter_axis(
-        self,
-        measuredPos: float,
-        dt: float,
-        previousPos: float,
-        previousVel: float,
-        previousAccel: float,
-        previousCovPosPos: float,
-        previousCovPosVel: float,
-        previousCovPosAccel: float,
-        previousCovVelPos: float,
-        previousCovVelVel: float,
-        previousCovVelAccel: float,
-        previousCovAccelPos: float,
-        previousCovAccelVel: float,
-        previousCovAccelAccel: float,
-        baseProcessNoisePos: float,
-        baseProcessNoiseVel: float,
-        baseProcessNoiseAccel: float,
-        baseMeasurementNoise: float,
-        adaptiveQScalingFactor: float,
-        dynamicRInnovationSlope: float,
-        dynamicRInnovationThreshold: float,
-        lastInnovationNormSquared: float,
-        positionAlphaMin: float,
-        positionAlphaMax: float,
-        positionAlphaDecay: float,
-        velocityAlphaMin: float,
-        velocityAlphaMax: float,
-        velocityAlphaMidpoint: float,
-        velocityAlphaSlope: float,
-        accelerationAlphaMin: float,
-        accelerationAlphaMax: float,
-        accelerationAlphaMidpoint: float,
-        accelerationAlphaSlope: float,
-        accelerationAlphaDecay: float,
-        accelerationDecayRate: float,
-        smoothingDecayTimeConstant: float,
-        updateDecayTimeConstant: float,
-        accelerationBoundsDecayFactor: float,
-        accelerationInnovationContributionFactor: float,
-        accelerationBoundsThreshold: float,
-        accelerationSaturationThreshold: float,
-        accelerationSaturationNoiseReduction: float,
-        accelerationAdaptiveScalingFactor: float,
-        gainAttenuationRate: float,
-        positionLockThreshold: float,
-        bypassCoercion: bool = False,
-    ) -> FilterResult:
-        safe = self._sanitize_inputs(
-            measuredPos=measuredPos,
-            dt=dt,
-            previousPos=previousPos,
-            previousVel=previousVel,
-            previousAccel=previousAccel,
-            previousCovPosPos=previousCovPosPos,
-            previousCovPosVel=previousCovPosVel,
-            previousCovPosAccel=previousCovPosAccel,
-            previousCovVelPos=previousCovVelPos,
-            previousCovVelVel=previousCovVelVel,
-            previousCovVelAccel=previousCovVelAccel,
-            previousCovAccelPos=previousCovAccelPos,
-            previousCovAccelVel=previousCovAccelVel,
-            previousCovAccelAccel=previousCovAccelAccel,
-            baseProcessNoisePos=baseProcessNoisePos,
-            baseProcessNoiseVel=baseProcessNoiseVel,
-            baseProcessNoiseAccel=baseProcessNoiseAccel,
-            baseMeasurementNoise=baseMeasurementNoise,
-            adaptiveQScalingFactor=adaptiveQScalingFactor,
-            lastInnovationNormSquared=lastInnovationNormSquared,
-            positionAlphaMin=positionAlphaMin,
-            positionAlphaMax=positionAlphaMax,
-            velocityAlphaMin=velocityAlphaMin,
-            velocityAlphaMax=velocityAlphaMax,
-            accelerationAlphaMin=accelerationAlphaMin,
-            accelerationAlphaMax=accelerationAlphaMax,
-            bypassCoercion=bypassCoercion,
-        )
-
-        if (
-            safe["previousPos"] == self.FALLBACK_ZERO_FLOAT and
-            safe["previousVel"] == self.FALLBACK_ZERO_FLOAT and
-            safe["previousAccel"] == self.FALLBACK_ZERO_FLOAT
-        ):
-            return self._initialize_filter(
-                safeDt=safe["dt"],
-                safeMeasuredPos=safe["measuredPos"],
-                safeBaseMeasurementNoise=safe["baseMeasurementNoise"],
-                safeBaseProcessNoiseVel=safe["baseProcessNoiseVel"],
-                safeBaseProcessNoiseAccel=safe["baseProcessNoiseAccel"],
-                bypassCoercion=bypassCoercion,
-            )
-
-        adaptive_q_pos, adaptive_q_vel, adaptive_q_accel = (
-            self._compute_adaptive_process_noise(
-                safeBaseProcessNoisePos=safe["baseProcessNoisePos"],
-                safeBaseProcessNoiseVel=safe["baseProcessNoiseVel"],
-                safeBaseProcessNoiseAccel=safe["baseProcessNoiseAccel"],
-                safeLastNIS=safe["lastNIS"],
-                safeAdaptiveQScaling=safe["adaptiveQScaling"],
-                safePreviousAccel=safe["previousAccel"],
-                accelerationSaturationNoiseReduction=(
-                    accelerationSaturationNoiseReduction
-                ),
-                accelerationSaturationThreshold=accelerationSaturationThreshold,
-                accelerationAdaptiveScalingFactor=(
-                    accelerationAdaptiveScalingFactor
-                ),
-                bypassCoercion=bypassCoercion,
-            )
-        )
-        estimated_accel, _ = self._estimate_acceleration(
-            safeMeasuredPos=safe["measuredPos"],
-            safePreviousPos=safe["previousPos"],
-            safePreviousVel=safe["previousVel"],
-            safePreviousAccel=safe["previousAccel"],
-            safeDt=safe["dt"],
-            accelerationDecayRate=accelerationDecayRate,
-            bypassCoercion=bypassCoercion,
-        )
-        prediction = self._perform_prediction(
-            safePreviousPos=safe["previousPos"],
-            safePreviousVel=safe["previousVel"],
-            safePreviousAccel=safe["previousAccel"],
-            safeDt=safe["dt"],
-            safeCovPosPos=safe["covPosPos"],
-            safeCovPosVel=safe["covPosVel"],
-            safeCovVelPos=safe["covVelPos"],
-            safeCovPosAccel=safe["covPosAccel"],
-            safeCovAccelPos=safe["covAccelPos"],
-            safeCovVelVel=safe["covVelVel"],
-            safeCovVelAccel=safe["covVelAccel"],
-            safeCovAccelVel=safe["covAccelVel"],
-            safeCovAccelAccel=safe["covAccelAccel"],
-            adaptiveQpos=adaptive_q_pos,
-            adaptiveQvel=adaptive_q_vel,
-            adaptiveQaccel=adaptive_q_accel,
-            bypassCoercion=bypassCoercion,
-        )
-        gains = self._compute_kalman_gains(
-            predictedPos=prediction["predictedPos"],
-            predictedCpp=prediction["predictedCpp"],
-            predictedCvp=prediction["predictedCvp"],
-            predictedCap=prediction["predictedCap"],
-            safeMeasuredPos=safe["measuredPos"],
-            safeBaseMeasurementNoise=safe["baseMeasurementNoise"],
-            dynamicRInnovationSlope=dynamicRInnovationSlope,
-            dynamicRInnovationThreshold=dynamicRInnovationThreshold,
-            gainAttenuationRate=gainAttenuationRate,
-            bypassCoercion=bypassCoercion,
-        )
-        updated_pos, updated_vel, updated_accel = self._perform_state_update(
-            safePreviousPos=safe["previousPos"],
-            safePreviousAccel=safe["previousAccel"],
-            safeDt=safe["dt"],
-            predictedPos=prediction["predictedPos"],
-            predictedVel=prediction["predictedVel"],
-            gainPos=gains["gainPos"],
-            gainVel=gains["gainVel"],
-            gainAccel=gains["gainAccel"],
-            innovation=gains["innovation"],
-            estimatedAccel=estimated_accel,
-            accelerationInnovationContributionFactor=(
-                accelerationInnovationContributionFactor
-            ),
-            updateDecayTimeConstant=updateDecayTimeConstant,
-            bypassCoercion=bypassCoercion,
-        )
-        smoothed_pos, smoothed_vel, smoothed_accel = self._perform_smoothing(
-            safePreviousPos=safe["previousPos"],
-            safePreviousVel=safe["previousVel"],
-            safePreviousAccel=safe["previousAccel"],
-            safeDt=safe["dt"],
-            safePosAlphaMin=safe["posAlphaMin"],
-            safePosAlphaMax=safe["posAlphaMax"],
-            safeVelAlphaMin=safe["velAlphaMin"],
-            safeVelAlphaMax=safe["velAlphaMax"],
-            safeAccelAlphaMin=safe["accelAlphaMin"],
-            safeAccelAlphaMax=safe["accelAlphaMax"],
-            updatedPos=updated_pos,
-            updatedVel=updated_vel,
-            updatedAccel=updated_accel,
-            innovation=gains["innovation"],
-            positionAlphaDecay=positionAlphaDecay,
-            velocityAlphaMidpoint=velocityAlphaMidpoint,
-            velocityAlphaSlope=velocityAlphaSlope,
-            accelerationAlphaMidpoint=accelerationAlphaMidpoint,
-            accelerationAlphaSlope=accelerationAlphaSlope,
-            accelerationAlphaDecay=accelerationAlphaDecay,
-            smoothingDecayTimeConstant=smoothingDecayTimeConstant,
-            accelerationBoundsThreshold=accelerationBoundsThreshold,
-            accelerationBoundsDecayFactor=accelerationBoundsDecayFactor,
-            bypassCoercion=bypassCoercion,
-        )
-        (
-            cov_pos_pos,
-            cov_pos_vel,
-            cov_pos_accel,
-            cov_vel_pos,
-            cov_vel_vel,
-            cov_vel_accel,
-            cov_accel_accel,
-        ) = self._update_covariances(
-            predictedCpp=prediction["predictedCpp"],
-            predictedCpv=prediction["predictedCpv"],
-            predictedCpa=prediction["predictedCpa"],
-            predictedCvp=prediction["predictedCvp"],
-            predictedCvv=prediction["predictedCvv"],
-            predictedCva=prediction["predictedCva"],
-            predictedCaa=prediction["predictedCaa"],
-            gainPos=gains["gainPos"],
-            gainVel=gains["gainVel"],
-            gainAccel=gains["gainAccel"],
-            bypassCoercion=bypassCoercion,
-        )
-
-        final_position = self._finite(smoothed_pos, safe["previousPos"])
-        final_velocity = self._finite(smoothed_vel, safe["previousVel"])
-        final_acceleration = self._finite(smoothed_accel, safe["previousAccel"])
-        if positionLockThreshold > 0.0:
-            position_delta = abs(final_position - safe["previousPos"])
-            alpha = self._exp(-positionLockThreshold * position_delta * position_delta)
-            final_position = (
-                alpha * safe["previousPos"] + (1.0 - alpha) * final_position
-            )
-
-        return FilterResult(
-            position=final_position,
-            velocity=final_velocity,
-            acceleration=final_acceleration,
-            covPosPos=cov_pos_pos,
-            covPosVel=cov_pos_vel,
-            covPosAccel=cov_pos_accel,
-            covVelPos=cov_vel_pos,
-            covVelVel=cov_vel_vel,
-            covVelAccel=cov_vel_accel,
-            covAccelAccel=cov_accel_accel,
-            innovationNormSquared=gains["newInnovationNormSquared"],
-        )
+    def filter_axis(self, *args, **kwargs) -> FilterResult:
+        return self._impl.filter_axis(*args, **kwargs)
 
 
 def parse_pose_detection_settings(values: Mapping[str, Any]) -> PoseDetectionSettings:
@@ -1438,7 +488,7 @@ def parse_log(path: Path, tag_re: str = r"WORLD_\w+", extra_names=None) -> pd.Da
 
     df = pd.DataFrame(records)
     df = df.drop_duplicates(subset=["frameNo", "landmark", "tag", "alpha"], keep="last")
-    df["variant"] = [f"{t} α={a:g}" for t, a in zip(df["tag"], df["alpha"])]
+    df["variant"] = [f"{t} Î±={a:g}" for t, a in zip(df["tag"], df["alpha"])]
     df = df.sort_values(["landmark", "variant", "frameNo"]).reset_index(drop=True)
     return df
 
@@ -1559,7 +609,145 @@ def _state_to_sim_values(state: FilterAxisState, axis: str) -> Dict[str, float]:
     }
 
 
-def simulate_world_space_filter(
+def _filter_version() -> str:
+    try:
+        from world_space_kalman_filter_private import FILTER_VERSION
+        return str(FILTER_VERSION)
+    except Exception:
+        return "missing-private-filter"
+
+
+def _settings_signature(settings: PoseDetectionSettings) -> str:
+    payload = json.dumps(asdict(settings), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _simulation_data_signature(df: pd.DataFrame) -> str:
+    cols = ["frameNo", "landmark", "variant", "rawX", "rawY", "rawZ"]
+    available = [col for col in cols if col in df.columns]
+    payload = (
+        df[available]
+        .sort_values(["frameNo", "landmark"])
+        .to_csv(index=False)
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def default_cache_db_for_report(out_path: Path) -> Path:
+    out_path = Path(out_path)
+    return out_path.with_name(f"{out_path.stem}_world_filter_cache.sqlite")
+
+
+def _init_simulation_cache(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS datasets (
+            data_hash TEXT PRIMARY KEY,
+            row_count INTEGER NOT NULL,
+            frame_min INTEGER,
+            frame_max INTEGER,
+            landmarks TEXT NOT NULL,
+            variants TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS kalman_filter_outputs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data_hash TEXT NOT NULL,
+            settings_hash TEXT NOT NULL,
+            filter_version TEXT NOT NULL,
+            fps REAL NOT NULL,
+            backend TEXT NOT NULL,
+            row_count INTEGER NOT NULL,
+            output_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(data_hash, settings_hash, filter_version, fps),
+            FOREIGN KEY(data_hash) REFERENCES datasets(data_hash)
+        )
+    """)
+    conn.commit()
+
+
+def _record_dataset_cache_metadata(
+    conn: sqlite3.Connection,
+    df: pd.DataFrame,
+    data_hash: str,
+) -> None:
+    frame_min = int(df["frameNo"].min()) if len(df) else None
+    frame_max = int(df["frameNo"].max()) if len(df) else None
+    landmarks = json.dumps(sorted(df["landmark"].astype(str).unique().tolist()))
+    variants = json.dumps(sorted(df["variant"].astype(str).unique().tolist()))
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO datasets
+        (data_hash, row_count, frame_min, frame_max, landmarks, variants)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (data_hash, int(len(df)), frame_min, frame_max, landmarks, variants),
+    )
+
+
+def _load_cached_simulation(
+    cache_db: Path,
+    data_hash: str,
+    settings_hash: str,
+    filter_version: str,
+    fps: float,
+) -> Optional[pd.DataFrame]:
+    if not cache_db.exists():
+        return None
+    with sqlite3.connect(cache_db) as conn:
+        _init_simulation_cache(conn)
+        row = conn.execute(
+            """
+            SELECT output_json FROM kalman_filter_outputs
+            WHERE data_hash = ? AND settings_hash = ?
+              AND filter_version = ? AND fps = ?
+            """,
+            (data_hash, settings_hash, filter_version, float(fps)),
+        ).fetchone()
+    if not row:
+        return None
+    return pd.read_json(io.StringIO(row[0]), orient="split")
+
+
+def _save_cached_simulation(
+    cache_db: Path,
+    source_df: pd.DataFrame,
+    sim_df: pd.DataFrame,
+    data_hash: str,
+    settings_hash: str,
+    filter_version: str,
+    fps: float,
+    backend: str,
+) -> None:
+    cache_db.parent.mkdir(parents=True, exist_ok=True)
+    output_json = sim_df.to_json(orient="split", double_precision=15)
+    with sqlite3.connect(cache_db) as conn:
+        _init_simulation_cache(conn)
+        _record_dataset_cache_metadata(conn, source_df, data_hash)
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO kalman_filter_outputs
+            (data_hash, settings_hash, filter_version, fps, backend, row_count, output_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data_hash,
+                settings_hash,
+                filter_version,
+                float(fps),
+                backend,
+                int(len(sim_df)),
+                output_json,
+            ),
+        )
+        conn.commit()
+
+
+def _simulate_world_space_filter_sequential(
     df: pd.DataFrame,
     settings: Optional[PoseDetectionSettings] = None,
     fps: float = 30.0,
@@ -1643,6 +831,106 @@ def simulate_world_space_filter(
         rows.append(out)
 
     return pd.DataFrame(rows)
+
+
+def _simulate_landmark_worker(args):
+    chunk_json, settings_values, fps = args
+    chunk = pd.read_json(io.StringIO(chunk_json), orient="split")
+    settings = PoseDetectionSettings(**settings_values)
+    return _simulate_world_space_filter_sequential(chunk, settings, fps).to_json(
+        orient="split",
+        double_precision=15,
+    )
+
+
+def simulate_world_space_filter(
+    df: pd.DataFrame,
+    settings: Optional[PoseDetectionSettings] = None,
+    fps: float = 30.0,
+    filter_obj: Optional[WorldSpaceKalmanFilter] = None,
+    parallel: bool = False,
+    workers: Optional[int] = None,
+    backend: str = "thread",
+) -> pd.DataFrame:
+    settings = settings or PoseDetectionSettings()
+    if filter_obj is not None or not parallel:
+        return _simulate_world_space_filter_sequential(df, settings, fps, filter_obj)
+
+    groups = [
+        group.sort_values(["frameNo", "landmark"]).reset_index(drop=True)
+        for _, group in df.groupby("landmark", sort=True)
+    ]
+    if len(groups) <= 1:
+        return _simulate_world_space_filter_sequential(df, settings, fps)
+
+    worker_count = workers or min(4, len(groups))
+    worker_count = max(1, min(int(worker_count), len(groups)))
+    executor_cls = ProcessPoolExecutor if backend == "process" else ThreadPoolExecutor
+    settings_values = asdict(settings)
+    tasks = [
+        (group.to_json(orient="split", double_precision=15), settings_values, fps)
+        for group in groups
+    ]
+    with executor_cls(max_workers=worker_count) as executor:
+        parts = [
+            pd.read_json(io.StringIO(result), orient="split")
+            for result in executor.map(_simulate_landmark_worker, tasks)
+        ]
+    return (
+        pd.concat(parts, ignore_index=True)
+        .sort_values(["frameNo", "landmark"])
+        .reset_index(drop=True)
+    )
+
+
+def simulate_world_space_filter_cached(
+    df: pd.DataFrame,
+    settings: Optional[PoseDetectionSettings] = None,
+    fps: float = 30.0,
+    cache_db: Optional[Path] = None,
+    parallel: bool = False,
+    workers: Optional[int] = None,
+    backend: str = "thread",
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> pd.DataFrame:
+    settings = settings or PoseDetectionSettings()
+    if cache_db is None:
+        return simulate_world_space_filter(
+            df, settings=settings, fps=fps,
+            parallel=parallel, workers=workers, backend=backend,
+        )
+
+    cache_db = Path(cache_db)
+    data_hash = _simulation_data_signature(df)
+    settings_hash = _settings_signature(settings)
+    filter_version = _filter_version()
+    cached = _load_cached_simulation(
+        cache_db, data_hash, settings_hash, filter_version, fps,
+    )
+    if cached is not None:
+        message = f"simulation cache hit: {cache_db.name} {data_hash[:8]}"
+        print(f"[info] {message}")
+        _emit_progress(progress_callback, message)
+        return cached
+
+    message = f"simulation cache miss: {cache_db.name} {data_hash[:8]}"
+    print(f"[info] {message}")
+    _emit_progress(progress_callback, message)
+    _emit_progress(
+        progress_callback,
+        f"Running Kalman simulation with {backend} backend"
+        f"{' in parallel' if parallel else ' sequentially'}...",
+    )
+    sim_df = simulate_world_space_filter(
+        df, settings=settings, fps=fps,
+        parallel=parallel, workers=workers, backend=backend,
+    )
+    _save_cached_simulation(
+        cache_db, df, sim_df, data_hash, settings_hash,
+        filter_version, fps, backend,
+    )
+    _emit_progress(progress_callback, f"Stored simulated filter output in {cache_db}")
+    return sim_df
 
 
 # ---------------------------------------------------------------------------
@@ -1745,7 +1033,7 @@ def build_group_figure(df, pairs):
     n = len(pairs); ncols = min(4, n); nrows = math.ceil(n / ncols)
     vspace = min(0.05, 0.5 / max(nrows - 1, 1))
     fig = make_subplots(rows=nrows, cols=ncols,
-                        subplot_titles=[f"{lm} — {v}" for lm, v in pairs],
+                        subplot_titles=[f"{lm} â€” {v}" for lm, v in pairs],
                         shared_xaxes=True,
                         horizontal_spacing=0.04, vertical_spacing=vspace)
     for idx, (lm, var) in enumerate(pairs):
@@ -1755,7 +1043,7 @@ def build_group_figure(df, pairs):
             fig.add_trace(tr, row=r + 1, col=c + 1)
         for tr in _outlier_traces(g, lm, showlegend=(idx == 0)):
             fig.add_trace(tr, row=r + 1, col=c + 1)
-    fig.update_layout(title="Group — all (landmark, variant) pairs",
+    fig.update_layout(title="Group â€” all (landmark, variant) pairs",
                       height=max(280 * nrows, 600), hovermode="x unified",
                       margin=dict(t=80),
                       legend=dict(orientation="h", yanchor="bottom", y=1.02,
@@ -1770,7 +1058,7 @@ def build_detail_figure(g, landmark, variant):
         fig.add_trace(tr)
     for tr in _outlier_traces(g, landmark, showlegend=True):
         fig.add_trace(tr)
-    fig.update_layout(title=f"{landmark} — {variant}",
+    fig.update_layout(title=f"{landmark} â€” {variant}",
                       xaxis_title="frameNo", yaxis_title="world coord (m)",
                       hovermode="x unified", height=620,
                       margin=dict(t=60, b=40),
@@ -1783,9 +1071,9 @@ def build_detail_figure(g, landmark, variant):
 # ---------------------------------------------------------------------------
 _CAM_PRESETS = {
     "Free":          dict(eye=dict(x=1.6, y=1.6, z=1.2), up=dict(x=0, y=0, z=1)),
-    "Along X → YZ":  dict(eye=dict(x=2.2, y=0,   z=0  ), up=dict(x=0, y=0, z=1)),
-    "Along Y → XZ":  dict(eye=dict(x=0,   y=2.2, z=0  ), up=dict(x=0, y=0, z=1)),
-    "Along Z → XY":  dict(eye=dict(x=0,   y=0,   z=2.2), up=dict(x=0, y=1, z=0)),
+    "Along X â†’ YZ":  dict(eye=dict(x=2.2, y=0,   z=0  ), up=dict(x=0, y=0, z=1)),
+    "Along Y â†’ XZ":  dict(eye=dict(x=0,   y=2.2, z=0  ), up=dict(x=0, y=0, z=1)),
+    "Along Z â†’ XY":  dict(eye=dict(x=0,   y=0,   z=2.2), up=dict(x=0, y=1, z=0)),
 }
 
 
@@ -1819,7 +1107,7 @@ def build_3d_figure(g, landmark, variant):
     buttons = [dict(label=k, method="relayout", args=[{"scene.camera": v}])
                for k, v in _CAM_PRESETS.items()]
     fig.update_layout(
-        title=f"{landmark} — {variant}",
+        title=f"{landmark} â€” {variant}",
         height=620, margin=dict(t=60, b=10, l=10, r=10),
         scene=dict(xaxis_title="X (m)", yaxis_title="Y (m)", zaxis_title="Z (m)",
                    aspectmode="data", camera=_CAM_PRESETS["Free"]),
@@ -1831,15 +1119,24 @@ def build_3d_figure(g, landmark, variant):
 
 
 # ---------------------------------------------------------------------------
-# HTML — lazy mount/purge
+# HTML â€” lazy mount/purge
 # ---------------------------------------------------------------------------
 def _segment_arrays(segments):
     x, y, z = [], [], []
     for segment in segments:
-        x.extend([segment["x"][0], segment["x"][1], None])
-        y.extend([segment["y"][0], segment["y"][1], None])
-        z.extend([segment["z"][0], segment["z"][1], None])
+        start = _skeleton_display_coords(
+            segment["x"][0], segment["y"][0], segment["z"][0])
+        end = _skeleton_display_coords(
+            segment["x"][1], segment["y"][1], segment["z"][1])
+        x.extend([start[0], end[0], None])
+        y.extend([start[1], end[1], None])
+        z.extend([start[2], end[2], None])
     return x, y, z
+
+
+def _skeleton_display_coords(world_x, world_y, world_z):
+    """Map MediaPipe world coordinates into a Y-up skeleton display space."""
+    return float(world_x), -float(world_y), float(world_z)
 
 
 def _point_arrays(landmarks, prefix):
@@ -1848,9 +1145,14 @@ def _point_arrays(landmarks, prefix):
         keys = [f"{prefix}{axis}" for axis in AXES]
         if not all(key in row for key in keys):
             continue
-        x.append(_coord(row, prefix, "X"))
-        y.append(_coord(row, prefix, "Y"))
-        z.append(_coord(row, prefix, "Z"))
+        display_x, display_y, display_z = _skeleton_display_coords(
+            _coord(row, prefix, "X"),
+            _coord(row, prefix, "Y"),
+            _coord(row, prefix, "Z"),
+        )
+        x.append(display_x)
+        y.append(display_y)
+        z.append(display_z)
         labels.append(name)
     return x, y, z, labels
 
@@ -1901,6 +1203,11 @@ def build_skeleton_figure(
     variant: str,
     fps: float = 30.0,
     settings: Optional[PoseDetectionSettings] = None,
+    cache_db: Optional[Path] = None,
+    simulation_parallel: bool = True,
+    simulation_workers: Optional[int] = None,
+    simulation_backend: str = "thread",
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> go.Figure:
     settings = settings or PoseDetectionSettings()
     df = df.sort_values(["frameNo", "landmark"]).reset_index(drop=True)
@@ -1911,7 +1218,17 @@ def build_skeleton_figure(
         return fig
 
     logged_frames = _skeleton_frame_maps(df)
-    sim_frames = _skeleton_frame_maps(simulate_world_space_filter(df, settings, fps=fps))
+    _emit_progress(progress_callback, f"Preparing simulated skeleton data for {variant}...")
+    sim_frames = _skeleton_frame_maps(simulate_world_space_filter_cached(
+        df,
+        settings=settings,
+        fps=fps,
+        cache_db=cache_db,
+        parallel=simulation_parallel,
+        workers=simulation_workers,
+        backend=simulation_backend,
+        progress_callback=progress_callback,
+    ))
     first_frame = frame_numbers[0]
 
     def payloads(frame_no):
@@ -1929,38 +1246,41 @@ def build_skeleton_figure(
     fig.add_traces([
         go.Scatter3d(
             **raw_payload["line"], mode="lines", name="raw skeleton",
-            legendgroup="raw", line=dict(color="#808080", **line_style),
+            legendgroup="raw", line=dict(color=SKELETON_RAW_COLOR, **line_style),
             opacity=0.48, hoverinfo="skip",
         ),
         go.Scatter3d(
             **raw_payload["points"], mode="markers+text", name="raw landmarks",
             legendgroup="raw", showlegend=False,
-            marker=dict(color="#808080", **point_style), textposition="top center",
-            hovertemplate="%{text}<br>raw X=%{x:.4f}<br>Y=%{y:.4f}<br>Z=%{z:.4f}<extra></extra>",
+            marker=dict(color=SKELETON_RAW_COLOR, **point_style), textposition="top center",
+            hovertemplate="%{text}<br>raw X=%{x:.4f}<br>height Y=%{y:.4f}<br>Z=%{z:.4f}<extra></extra>",
         ),
         go.Scatter3d(
             **logged_payload["line"], mode="lines", name="logged filtered skeleton",
-            legendgroup="logged-filtered", line=dict(color="#1f77b4", **line_style),
+            legendgroup="logged-filtered",
+            line=dict(color=SKELETON_LOGGED_FILTERED_COLOR, **line_style),
             hoverinfo="skip",
         ),
         go.Scatter3d(
             **logged_payload["points"], mode="markers+text",
             name="logged filtered landmarks", legendgroup="logged-filtered",
-            showlegend=False, marker=dict(color="#1f77b4", **point_style),
+            showlegend=False,
+            marker=dict(color=SKELETON_LOGGED_FILTERED_COLOR, **point_style),
             textposition="bottom center",
-            hovertemplate="%{text}<br>logged filt X=%{x:.4f}<br>Y=%{y:.4f}<br>Z=%{z:.4f}<extra></extra>",
+            hovertemplate="%{text}<br>logged filt X=%{x:.4f}<br>height Y=%{y:.4f}<br>Z=%{z:.4f}<extra></extra>",
         ),
         go.Scatter3d(
             **sim_payload["line"], mode="lines", name="simulated filtered skeleton",
             legendgroup="sim-filtered", visible=False,
-            line=dict(color="#d62728", **line_style), hoverinfo="skip",
+            line=dict(color=SKELETON_SIM_FILTERED_COLOR, **line_style), hoverinfo="skip",
         ),
         go.Scatter3d(
             **sim_payload["points"], mode="markers+text",
             name="simulated filtered landmarks", legendgroup="sim-filtered",
-            showlegend=False, visible=False, marker=dict(color="#d62728", **point_style),
+            showlegend=False, visible=False,
+            marker=dict(color=SKELETON_SIM_FILTERED_COLOR, **point_style),
             textposition="bottom center",
-            hovertemplate="%{text}<br>sim filt X=%{x:.4f}<br>Y=%{y:.4f}<br>Z=%{z:.4f}<extra></extra>",
+            hovertemplate="%{text}<br>sim filt X=%{x:.4f}<br>height Y=%{y:.4f}<br>Z=%{z:.4f}<extra></extra>",
         ),
     ])
 
@@ -1990,14 +1310,15 @@ def build_skeleton_figure(
         height=900,
         margin=dict(t=42, b=4, l=4, r=4),
         scene=dict(
-            xaxis=dict(title="X (m)", range=scene_ranges["x"], autorange=False),
-            yaxis=dict(title="Y (m)", range=scene_ranges["y"], autorange=False),
-            zaxis=dict(title="Z (m)", range=scene_ranges["z"], autorange=False),
+            xaxis=dict(title="X floor (m)", range=scene_ranges["x"], autorange=False),
+            yaxis=dict(title="Y height (m)", range=scene_ranges["y"], autorange=False),
+            zaxis=dict(title="Z depth (m)", range=scene_ranges["z"], autorange=False),
             aspectmode="manual",
             aspectratio=dict(x=aspect_ratio["x"], y=aspect_ratio["y"],
                              z=aspect_ratio["z"]),
-            camera=dict(eye=dict(x=1.65, y=0.12, z=1.45),
-                        up=dict(x=0, y=-1, z=0)),
+            camera=dict(eye=dict(x=1.65, y=0.85, z=1.45),
+                        up=dict(x=0, y=1, z=0),
+                        projection=dict(type="orthographic")),
             dragmode="turntable",
             uirevision="skeleton-fixed-scene",
         ),
@@ -2013,12 +1334,12 @@ def _fmt(v, nd=4):
 
 
 def _quick_glance_html(row):
-    star = " ★" if row.get("bestInLandmark", False) else ""
-    cells = [("α", f"{row['alpha']:g}{star}"), ("frames", int(row["nFrames"])),
+    star = " â˜…" if row.get("bestInLandmark", False) else ""
+    cells = [("Î±", f"{row['alpha']:g}{star}"), ("frames", int(row["nFrames"])),
              ("|res| p25", _fmt(row["p25Avg"])), ("p50", _fmt(row["p50Avg"])),
              ("p75", _fmt(row["p75Avg"])), ("mean", _fmt(row["meanAvg"])),
              ("std", _fmt(row["stdAvg"])),
-             ("jitter↓", f"{row['jitterReduction']*100:.1f}%"),
+             ("jitterâ†“", f"{row['jitterReduction']*100:.1f}%"),
              ("outlier frames", int(row["nOutliers"]))]
     head = "<tr>" + "".join(f"<th>{k}</th>" for k, _ in cells) + "</tr>"
     body = "<tr>" + "".join(f"<td>{v}</td>" for _, v in cells) + "</tr>"
@@ -2041,11 +1362,11 @@ def _per_axis_table_html(row):
 def _ranking_table_html(summary):
     s = summary.sort_values("p50Avg").reset_index(drop=True)
     head = ("<tr><th>#</th><th>landmark</th><th>variant</th>"
-            "<th>p50 |res|</th><th>p75 |res|</th><th>jitter↓</th>"
+            "<th>p50 |res|</th><th>p75 |res|</th><th>jitterâ†“</th>"
             "<th>outliers</th><th>frames</th></tr>")
     rows = []
     for i, r in s.iterrows():
-        star = " ★" if r["bestInLandmark"] else ""
+        star = " â˜…" if r["bestInLandmark"] else ""
         rows.append(
             f"<tr><td>{i+1}</td>"
             f"<td><a href='#' onclick=\"setLandmark('{r['landmark']}');return false;\">"
@@ -2054,8 +1375,8 @@ def _ranking_table_html(summary):
             f"<td>{_fmt(r['p50Avg'])}</td><td>{_fmt(r['p75Avg'])}</td>"
             f"<td>{r['jitterReduction']*100:.1f}%</td>"
             f"<td>{int(r['nOutliers'])}</td><td>{int(r['nFrames'])}</td></tr>")
-    return ("<details class='ranking'><summary><b>Ranking — all (landmark, variant) "
-            "by p50 |res| (★ = best variant for that landmark)</b></summary>"
+    return ("<details class='ranking'><summary><b>Ranking â€” all (landmark, variant) "
+            "by p50 |res| (â˜… = best variant for that landmark)</b></summary>"
             f"<table class='stats'>{head}{''.join(rows)}</table></details>")
 
 
@@ -2144,6 +1465,13 @@ HTML_HEAD = """<!doctype html>
       font-size: 14px; padding: 5px 10px; cursor: pointer; }
   .skeleton-controls label { display: inline-flex; align-items: center; gap: 4px; }
   .skeleton-controls input[type=range] { width: 150px; }
+  .skeleton-key { display: inline-flex; align-items: center; gap: 5px;
+                  font-size: 12px; color: #333; }
+  .skeleton-key::before { content: ""; width: 18px; height: 4px;
+                          border-radius: 999px; background: var(--key-color); }
+  .skeleton-key.raw { --key-color: #374151; }
+  .skeleton-key.logged { --key-color: #2563eb; }
+  .skeleton-key.sim { --key-color: #f97316; }
   #view-skeleton.active { padding-bottom: 64px; }
   .skeleton-scrubber { position: fixed; left: 12px; right: 12px; bottom: 0;
                        z-index: 10; display: flex; align-items: center;
@@ -2183,8 +1511,9 @@ var skeletonSubjectSpinTimer = null;
 var PLOT_CFG = {responsive: true, displaylogo: false, scrollZoom: true};
 var SKELETON_FRAME_MS = __SKELETON_FRAME_MS__;
 var SKELETON_DEFAULT_CAMERA = {
-  eye: {x: 1.65, y: 0.12, z: 1.45},
-  up: {x: 0, y: -1, z: 0}
+  eye: {x: 1.65, y: 0.85, z: 1.45},
+  up: {x: 0, y: 1, z: 0},
+  projection: {type: 'orthographic'}
 };
 
 function skeletonLog(msg){
@@ -2470,7 +1799,8 @@ function skeletonTransformFromData(data){
   }
   return {
     mode: mode,
-    center: (mode === 'centered' || mode === 'body') ? center : {x: 0, y: 0, z: 0},
+    center: (mode === 'centered' || mode === 'body') ?
+      {x: center.x, y: 0, z: center.z} : {x: 0, y: 0, z: 0},
     cos: Math.cos(yaw),
     sin: Math.sin(yaw)
   };
@@ -2592,7 +1922,9 @@ function cloneCamera(camera){
   camera = camera || {};
   var cloned = {
     eye: Object.assign({}, SKELETON_DEFAULT_CAMERA.eye, camera.eye || {}),
-    up: Object.assign({}, SKELETON_DEFAULT_CAMERA.up, camera.up || {})
+    up: Object.assign({}, SKELETON_DEFAULT_CAMERA.up, camera.up || {}),
+    projection: Object.assign(
+      {}, SKELETON_DEFAULT_CAMERA.projection, camera.projection || {})
   };
   if (camera.center) {
     cloned.center = Object.assign({x: 0, y: 0, z: 0}, camera.center);
@@ -2669,7 +2001,9 @@ function rotateSkeletonCamera(div, yaw, pitch){
     eye = rotateVec(eye, right, pitch);
     up = normalizeVec(rotateVec(up, right, pitch));
   }
-  Plotly.relayout(div, {'scene.camera': {eye: eye, up: up}}).then(function(){
+  Plotly.relayout(div, {
+    'scene.camera': {eye: eye, up: up, projection: cam.projection}
+  }).then(function(){
     rememberSkeletonViewState(div);
   });
 }
@@ -2678,7 +2012,8 @@ function zoomSkeletonCamera(div, factor){
   Plotly.relayout(div, {
     'scene.camera': {
       eye: scaleVec(vector(cam.eye.x, cam.eye.y, cam.eye.z), factor),
-      up: cam.up
+      up: cam.up,
+      projection: cam.projection
     }
   }).then(function(){
     rememberSkeletonViewState(div);
@@ -2741,7 +2076,10 @@ refreshMounts();   // initial mount of the default (Individual) view
 
 def write_html(df, summary, pairs, landmarks, out_path,
                iqr_k, min_delta, extras_label, render_group=True,
-               fps=30.0, settings=None):
+               fps=30.0, settings=None, cache_db=None,
+               simulation_parallel=True, simulation_workers=None,
+               simulation_backend="thread",
+               progress_callback: Optional[Callable[[str], None]] = None):
     settings = settings or PoseDetectionSettings()
     summary_idx = summary.set_index(["landmark", "variant"], drop=False)
     parts = [HTML_HEAD, _plotlyjs_cdn_tag()]
@@ -2758,16 +2096,17 @@ def write_html(df, summary, pairs, landmarks, out_path,
         "<button id='btn-3d'     onclick=\"setView('3d')\">3D view</button>"
         "<button id='btn-skeleton' onclick=\"setView('skeleton')\">Skeleton view</button>"
         "<span id='nav' class='nav active'>"
-        "  <button onclick='stepLandmark(-1)' title='Previous (←)'>◀</button>"
+        "  <button onclick='stepLandmark(-1)' title='Previous (â†)'>â—€</button>"
         f" <select id='lm-select' onchange='setLandmark(this.value)'>{opts}</select>"
-        "  <button onclick='stepLandmark(1)' title='Next (→)'>▶</button>"
+        "  <button onclick='stepLandmark(1)' title='Next (â†’)'>â–¶</button>"
         f" <span id='lm-pos'>1 / {len(landmarks)}</span></span>"
-        f"<span class='params'>extras (CSV only): {extras_label} · "
-        f"outlier: IQR·k={iqr_k:g}, minΔ={min_delta:g}</span></div>"
+        f"<span class='params'>extras (CSV only): {extras_label} Â· "
+        f"outlier: IQRÂ·k={iqr_k:g}, minÎ”={min_delta:g}</span></div>"
     )
     parts.append(_settings_inputs_html(settings))
 
     # ---- group (lazy, keep-once-mounted) -------------------------------
+    _emit_progress(progress_callback, "Building Group view...")
     parts.append("<div id='view-group' class='view'>")
     if render_group:
         parts.append(_lazy_plot_html(build_group_figure(df, pairs), nid(), keep=True))
@@ -2777,6 +2116,7 @@ def write_html(df, summary, pairs, landmarks, out_path,
     parts.append("</div>")
 
     # ---- individual (lazy, purge on hide) ------------------------------
+    _emit_progress(progress_callback, "Building Individual view...")
     parts.append("<div id='view-detail' class='view active'>")
     parts.append(_ranking_table_html(summary))
     for i, lm in enumerate(landmarks):
@@ -2788,15 +2128,16 @@ def write_html(df, summary, pairs, landmarks, out_path,
             parts.append("<div class='alpha-block'>")
             parts.append(_quick_glance_html(srow))
             parts.append(_lazy_plot_html(build_detail_figure(g, lm, var), nid()))
-            parts.append("<div class='stats-caption'>res = filt − raw · "
-                         "jitter↓ = 1 − std(Δfilt)/std(Δraw), avg XYZ · "
-                         "outliers: |Δraw| > Q3 + k·IQR and > minΔ</div>")
+            parts.append("<div class='stats-caption'>res = filt âˆ’ raw Â· "
+                         "jitterâ†“ = 1 âˆ’ std(Î”filt)/std(Î”raw), avg XYZ Â· "
+                         "outliers: |Î”raw| > Q3 + kÂ·IQR and > minÎ”</div>")
             parts.append(_per_axis_table_html(srow))
             parts.append("</div>")
         parts.append("</div>")
     parts.append("</div>")
 
-    # ---- 3D (lazy, purge on hide — this is what frees WebGL) -----------
+    # ---- 3D (lazy, purge on hide â€” this is what frees WebGL) -----------
+    _emit_progress(progress_callback, "Building 3D landmark trajectory views...")
     parts.append("<div id='view-3d' class='view'>")
     for i, lm in enumerate(landmarks):
         active = " active" if i == 0 else ""
@@ -2812,6 +2153,7 @@ def write_html(df, summary, pairs, landmarks, out_path,
     parts.append("</div>")
 
     # ---- skeleton playback (lazy, purge on hide) -----------------------
+    _emit_progress(progress_callback, "Building Skeleton playback view...")
     parts.append("<div id='view-skeleton' class='view'>")
     skeleton_variants = sorted(df["variant"].unique())
     variant_options = "".join(
@@ -2862,6 +2204,9 @@ def write_html(df, summary, pairs, landmarks, out_path,
         "</select>"
         "<span id='skel-frame-status' class='skeleton-status'>Frame -</span>"
         "<button id='skel-clear-log' onclick='clearSkeletonLog()'>Clear log</button>"
+        "<span class='skeleton-key raw'>Raw</span>"
+        "<span class='skeleton-key logged'>Logged filtered</span>"
+        "<span class='skeleton-key sim'>Kalman simulation</span>"
         "</div>"
         "<div class='skeleton-scrubber'>"
         "<span>Elapsed frames</span>"
@@ -2875,13 +2220,27 @@ def write_html(df, summary, pairs, landmarks, out_path,
     for index, var in enumerate(skeleton_variants):
         g = df[df["variant"] == var]
         active = " active" if index == 0 else ""
+        _emit_progress(
+            progress_callback,
+            f"Building skeleton variant {index + 1}/{len(skeleton_variants)}: {var}",
+        )
         parts.append(
             f"<div class='alpha-block skeleton-variant-block{active}' "
             f"data-variant='{html.escape(var, quote=True)}'>"
         )
         parts.append(f"<h3>{html.escape(var)}</h3>")
         parts.append(_lazy_plot_html(
-            build_skeleton_figure(g, var, fps=fps, settings=settings),
+            build_skeleton_figure(
+                g,
+                var,
+                fps=fps,
+                settings=settings,
+                cache_db=cache_db,
+                simulation_parallel=simulation_parallel,
+                simulation_workers=simulation_workers,
+                simulation_backend=simulation_backend,
+                progress_callback=progress_callback,
+            ),
             nid(),
             extra_class="skeleton-plot",
         ))
@@ -2926,15 +2285,23 @@ def generate_report(
     render_group=True,
     fps=30.0,
     settings=None,
+    cache_db=None,
+    simulation_parallel=True,
+    simulation_workers=None,
+    simulation_backend="thread",
+    progress_callback: Optional[Callable[[str], None]] = None,
     open_report=False,
 ):
     logfile = Path(logfile)
     out = Path(out)
     csv_frames = Path(csv_frames) if csv_frames else None
     csv_summary = Path(csv_summary) if csv_summary else None
+    cache_db = Path(cache_db) if cache_db else default_cache_db_for_report(out)
     settings = settings or PoseDetectionSettings()
     extra_names = [s.strip() for s in schema.split(",")] if schema else []
+    _emit_progress(progress_callback, f"Parsing log file: {logfile}")
     df = parse_log(logfile, tag_re=tag_re, extra_names=extra_names)
+    _emit_progress(progress_callback, f"Parsed {len(df)} WORLD rows")
 
     all_lms = sorted(df["landmark"].unique())
     lms = _split_landmarks(landmarks)
@@ -2951,7 +2318,9 @@ def generate_report(
     if not lms:
         raise ValueError("No selected landmarks were found in the log")
 
+    _emit_progress(progress_callback, "Computing residual, jitter, and outlier statistics...")
     df = enrich(df, iqr_k=iqr_k, min_delta=min_delta)
+    _emit_progress(progress_callback, "Summarizing landmarks and variants...")
     summary = summarize(df)
     pairs = sorted(set(zip(df["landmark"], df["variant"])))
 
@@ -2970,17 +2339,27 @@ def generate_report(
     stem = out.with_suffix("")
     frames_csv = csv_frames or Path(f"{stem}_frames.csv")
     summary_csv = csv_summary or Path(f"{stem}_summary.csv")
+    _emit_progress(progress_callback, f"Writing frames CSV: {frames_csv}")
     df.to_csv(frames_csv, index=False)
+    _emit_progress(progress_callback, f"Writing summary CSV: {summary_csv}")
     summary.to_csv(summary_csv, index=False)
     print(f"[info] wrote {frames_csv}")
     print(f"[info] wrote {summary_csv}")
+    print(f"[info] simulation cache DB: {cache_db}")
 
+    _emit_progress(progress_callback, f"Building HTML report: {out}")
     write_html(df, summary, pairs, lms, out,
                iqr_k=iqr_k, min_delta=min_delta,
                extras_label=extras_label,
                render_group=render_group,
                fps=fps,
-               settings=settings)
+               settings=settings,
+               cache_db=cache_db,
+               simulation_parallel=simulation_parallel,
+               simulation_workers=simulation_workers,
+               simulation_backend=simulation_backend,
+               progress_callback=progress_callback)
+    _emit_progress(progress_callback, f"Finished report: {out}")
 
     if open_report:
         import webbrowser
@@ -2994,11 +2373,16 @@ def generate_report(
         "html": out,
         "frames_csv": frames_csv,
         "summary_csv": summary_csv,
+        "cache_db": cache_db,
         "extras_label": extras_label,
     }
 
 
 def launch_gui():
+    import queue
+    import threading
+    import traceback
+    import webbrowser
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
 
@@ -3011,15 +2395,22 @@ def launch_gui():
     out_var = tk.StringVar(value=str(Path("world_filter_review.html")))
     frames_var = tk.StringVar()
     summary_var = tk.StringVar()
+    cache_var = tk.StringVar(value=str(default_cache_db_for_report(Path("world_filter_review.html"))))
     landmarks_var = tk.StringVar()
     tag_var = tk.StringVar(value=r"WORLD_\w+")
     schema_var = tk.StringVar(value="vel")
     iqr_var = tk.StringVar(value="1.5")
     min_delta_var = tk.StringVar(value="0.0")
     fps_var = tk.StringVar(value="30.0")
+    simulation_backend_var = tk.StringVar(value="thread")
+    simulation_workers_var = tk.StringVar(value="4")
     render_group_var = tk.BooleanVar(value=True)
     open_var = tk.BooleanVar(value=True)
     status_var = tk.StringVar(value="Choose a log file, then generate the report.")
+    available_presets: Dict[str, PoseDetectionSettings] = {"Defaults": default_settings}
+    preset_var = tk.StringVar(value="Defaults")
+    active_preset_var = tk.StringVar(value="Coefficient set: Defaults")
+    preset_state = {"name": "Defaults", "updating": False}
 
     main = ttk.Frame(root, padding=12)
     main.pack(fill="both", expand=True)
@@ -3036,6 +2427,7 @@ def launch_gui():
         out_var.set(str(html_path))
         frames_var.set(str(frames_path))
         summary_var.set(str(summary_path))
+        cache_var.set(str(default_cache_db_for_report(html_path)))
 
     def choose_save(var, title, default_ext, filetypes):
         path = filedialog.asksaveasfilename(
@@ -3053,6 +2445,7 @@ def launch_gui():
             stem = Path(out_var.get().strip()).with_suffix("")
             frames_var.set(str(Path(f"{stem}_frames.csv")))
             summary_var.set(str(Path(f"{stem}_summary.csv")))
+            cache_var.set(str(default_cache_db_for_report(Path(out_var.get().strip()))))
 
     def add_file_row(parent, row, label, var, browse_command):
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=3)
@@ -3075,6 +2468,11 @@ def launch_gui():
         files, 3, "Summary CSV", summary_var,
         lambda: choose_save(summary_var, "Save summary CSV", ".csv",
                             [("CSV files", "*.csv"), ("All files", "*.*")]),
+    )
+    add_file_row(
+        files, 4, "Cache DB", cache_var,
+        lambda: choose_save(cache_var, "Save simulation cache DB", ".sqlite",
+                            [("SQLite files", "*.sqlite"), ("All files", "*.*")]),
     )
 
     options = ttk.LabelFrame(main, text="Report options", padding=8)
@@ -3099,6 +2497,17 @@ def launch_gui():
         row=3, column=0, sticky="w", pady=4)
     ttk.Checkbutton(options, text="Open report when done", variable=open_var).grid(
         row=3, column=1, sticky="w", pady=4)
+    ttk.Label(options, text="Sim backend").grid(row=4, column=0, sticky="w", pady=3)
+    ttk.Combobox(
+        options,
+        textvariable=simulation_backend_var,
+        values=["thread", "process"],
+        state="readonly",
+        width=12,
+    ).grid(row=4, column=1, sticky="w", padx=6, pady=3)
+    ttk.Label(options, text="Sim workers").grid(row=4, column=2, sticky="w", pady=3)
+    ttk.Entry(options, textvariable=simulation_workers_var, width=10).grid(
+        row=4, column=3, sticky="w", padx=6, pady=3)
 
     coef_box = ttk.LabelFrame(main, text="Filter coefficients", padding=8)
     coef_box.pack(fill="both", expand=True, pady=(10, 0))
@@ -3114,19 +2523,56 @@ def launch_gui():
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
+    def mark_coefficients_custom(*_args):
+        if preset_state["updating"]:
+            return
+        name = preset_state["name"]
+        if not str(name).startswith("Custom"):
+            name = f"Custom from {name}"
+            preset_state["name"] = name
+            active_preset_var.set(f"Coefficient set: {name}")
+        else:
+            active_preset_var.set(f"Coefficient set: {name}")
+
     coef_vars = {}
     for idx, f in enumerate(fields(PoseDetectionSettings)):
         row, side = divmod(idx, 2)
         col = side * 2
         var = tk.StringVar(value=str(getattr(default_settings, f.name)))
+        var.trace_add("write", mark_coefficients_custom)
         coef_vars[f.name] = var
         ttk.Label(coef_frame, text=f.name).grid(row=row, column=col, sticky="w", padx=(0, 6), pady=2)
         ttk.Entry(coef_frame, textvariable=var, width=14).grid(row=row, column=col + 1, sticky="ew", padx=(0, 12), pady=2)
 
-    def apply_settings_to_fields(settings):
+    def apply_settings_to_fields(settings, preset_name="Custom"):
         values = asdict(settings)
-        for name, var in coef_vars.items():
-            var.set(str(values[name]))
+        preset_state["updating"] = True
+        try:
+            for name, var in coef_vars.items():
+                var.set(str(values[name]))
+        finally:
+            preset_state["updating"] = False
+        preset_state["name"] = preset_name
+        active_preset_var.set(f"Coefficient set: {preset_name}")
+        if preset_name in available_presets:
+            preset_var.set(preset_name)
+
+    def refresh_preset_combo():
+        names = sorted(available_presets)
+        preset_combo.configure(values=names)
+        if preset_var.get() not in names and names:
+            preset_var.set(names[0])
+
+    def apply_selected_preset():
+        name = preset_var.get()
+        settings = available_presets.get(name)
+        if settings is None:
+            messagebox.showerror("Filter coefficients", f"Unknown preset: {name}")
+            return
+        apply_settings_to_fields(settings, name)
+        status_var.set(
+            f"Loaded coefficients: {name}. Edit any field to create a custom run."
+        )
 
     def choose_preset_name(presets):
         names = sorted(presets)
@@ -3184,13 +2630,33 @@ def launch_gui():
             selected = choose_preset_name(presets)
             if not selected:
                 return
-            apply_settings_to_fields(presets[selected])
-            status_var.set(f"Loaded coefficients: {selected}")
+            available_presets.update(presets)
+            refresh_preset_combo()
+            preset_var.set(selected)
+            apply_settings_to_fields(available_presets[selected], selected)
+            status_var.set(
+                f"Imported {len(presets)} preset(s); loaded coefficients: {selected}"
+            )
         except Exception as exc:
             messagebox.showerror("Import coefficients", str(exc))
 
     coef_actions = ttk.Frame(main)
     coef_actions.pack(fill="x", pady=(8, 0))
+    ttk.Label(coef_actions, text="Preset").pack(side="left")
+    preset_combo = ttk.Combobox(
+        coef_actions,
+        textvariable=preset_var,
+        values=sorted(available_presets),
+        state="readonly",
+        width=26,
+    )
+    preset_combo.pack(side="left", padx=(6, 4))
+    preset_combo.bind("<<ComboboxSelected>>", lambda _event: apply_selected_preset())
+    ttk.Button(
+        coef_actions,
+        text="Apply preset",
+        command=apply_selected_preset,
+    ).pack(side="left", padx=(0, 8))
     ttk.Button(
         coef_actions,
         text="Import coefficients...",
@@ -3199,8 +2665,9 @@ def launch_gui():
     ttk.Button(
         coef_actions,
         text="Reset coefficients",
-        command=lambda: apply_settings_to_fields(PoseDetectionSettings()),
+        command=lambda: apply_settings_to_fields(available_presets["Defaults"], "Defaults"),
     ).pack(side="left", padx=8)
+    ttk.Label(coef_actions, textvariable=active_preset_var).pack(side="left", padx=8)
 
     def run_generation():
         try:
@@ -3209,28 +2676,140 @@ def launch_gui():
             settings = parse_pose_detection_settings(
                 {name: var.get() for name, var in coef_vars.items()}
             )
-            status_var.set("Generating report...")
-            root.update_idletasks()
-            result = generate_report(
-                logfile=Path(log_var.get().strip()),
-                landmarks=landmarks_var.get(),
-                out=Path(out_var.get().strip() or "world_filter_review.html"),
-                csv_frames=Path(frames_var.get().strip()) if frames_var.get().strip() else None,
-                csv_summary=Path(summary_var.get().strip()) if summary_var.get().strip() else None,
-                tag_re=tag_var.get().strip() or r"WORLD_\w+",
-                schema=schema_var.get().strip() or None,
-                iqr_k=float(iqr_var.get()),
-                min_delta=float(min_delta_var.get()),
-                render_group=render_group_var.get(),
-                fps=float(fps_var.get()),
-                settings=settings,
-                open_report=open_var.get(),
-            )
-            status_var.set(f"Wrote {result['html']}")
-            messagebox.showinfo("WORLD Filter Visualizer", f"Wrote report:\n{result['html']}")
+            settings_label = preset_state["name"]
+            settings_hash = _settings_signature(settings)[:8]
         except Exception as exc:
-            status_var.set("Generation failed")
             messagebox.showerror("WORLD Filter Visualizer", str(exc))
+            return
+
+        progress_dialog = tk.Toplevel(root)
+        progress_dialog.title("Generating WORLD Filter Report")
+        progress_dialog.transient(root)
+        progress_dialog.geometry("720x360")
+        progress_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        progress_status_var = tk.StringVar(value="Starting report generation...")
+        ttk.Label(
+            progress_dialog,
+            textvariable=progress_status_var,
+            padding=(12, 12, 12, 4),
+        ).pack(fill="x")
+        spinner = ttk.Progressbar(progress_dialog, mode="indeterminate")
+        spinner.pack(fill="x", padx=12, pady=(0, 8))
+        spinner.start(12)
+        log_text = tk.Text(progress_dialog, height=12, wrap="word")
+        log_text.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+        log_text.configure(state="disabled")
+        close_button = ttk.Button(progress_dialog, text="Close", state="disabled")
+        close_button.pack(anchor="e", padx=12, pady=(0, 12))
+
+        messages = queue.Queue()
+
+        def add_log_line(message):
+            log_text.configure(state="normal")
+            log_text.insert("end", f"{message}\n")
+            log_text.see("end")
+            log_text.configure(state="disabled")
+
+        def progress(message):
+            messages.put(("progress", message))
+
+        def close_progress():
+            progress_dialog.destroy()
+
+        close_button.configure(command=close_progress)
+        status_var.set(f"Generating report with {settings_label} ({settings_hash})...")
+        worker_state = {"complete": False}
+
+        def worker():
+            try:
+                progress("Worker started")
+                progress(f"Using coefficient set: {settings_label} ({settings_hash})")
+                result = generate_report(
+                    logfile=Path(log_var.get().strip()),
+                    landmarks=landmarks_var.get(),
+                    out=Path(out_var.get().strip() or "world_filter_review.html"),
+                    csv_frames=Path(frames_var.get().strip()) if frames_var.get().strip() else None,
+                    csv_summary=Path(summary_var.get().strip()) if summary_var.get().strip() else None,
+                    tag_re=tag_var.get().strip() or r"WORLD_\w+",
+                    schema=schema_var.get().strip() or None,
+                    iqr_k=float(iqr_var.get()),
+                    min_delta=float(min_delta_var.get()),
+                    render_group=render_group_var.get(),
+                    fps=float(fps_var.get()),
+                    settings=settings,
+                    cache_db=Path(cache_var.get().strip()) if cache_var.get().strip() else None,
+                    simulation_parallel=True,
+                    simulation_workers=(
+                        int(simulation_workers_var.get())
+                        if simulation_workers_var.get().strip()
+                        else None
+                    ),
+                    simulation_backend=simulation_backend_var.get(),
+                    progress_callback=progress,
+                    open_report=False,
+                )
+                messages.put(("done", {
+                    "html": str(result["html"]),
+                    "frames_csv": str(result["frames_csv"]),
+                    "summary_csv": str(result["summary_csv"]),
+                    "cache_db": str(result["cache_db"]),
+                }))
+            except Exception as exc:
+                messages.put(("error", (exc, traceback.format_exc())))
+
+        worker_thread = threading.Thread(target=worker, daemon=True)
+
+        def finish_progress_dialog(message):
+            worker_state["complete"] = True
+            spinner.stop()
+            progress_status_var.set(message)
+            close_button.configure(state="normal")
+            progress_dialog.protocol("WM_DELETE_WINDOW", close_progress)
+
+        def poll_messages():
+            try:
+                while True:
+                    kind, payload = messages.get_nowait()
+                    if kind == "progress":
+                        progress_status_var.set(str(payload))
+                        add_log_line(str(payload))
+                    elif kind == "done":
+                        html_path = Path(payload["html"])
+                        finish_progress_dialog(f"Done: {html_path}")
+                        add_log_line(f"Done: {html_path}")
+                        add_log_line(f"Frames CSV: {payload['frames_csv']}")
+                        add_log_line(f"Summary CSV: {payload['summary_csv']}")
+                        add_log_line(f"Cache DB: {payload['cache_db']}")
+                        status_var.set(f"Wrote {html_path}")
+                        if open_var.get():
+                            threading.Thread(
+                                target=lambda: webbrowser.open(html_path.resolve().as_uri()),
+                                daemon=True,
+                            ).start()
+                    elif kind == "error":
+                        exc, tb = payload
+                        finish_progress_dialog("Generation failed")
+                        add_log_line(tb)
+                        status_var.set("Generation failed")
+                        messagebox.showerror("WORLD Filter Visualizer", str(exc))
+            except queue.Empty:
+                pass
+
+            if (
+                not worker_state["complete"] and
+                not worker_thread.is_alive() and
+                messages.empty()
+            ):
+                finish_progress_dialog("Generation worker exited without a completion message")
+                add_log_line("Generation worker exited without a completion message.")
+                status_var.set("Generation status unknown")
+
+            if progress_dialog.winfo_exists() and not worker_state["complete"]:
+                root.after(100, poll_messages)
+
+        worker_thread.start()
+        root.after(100, poll_messages)
 
     actions = ttk.Frame(main)
     actions.pack(fill="x", pady=(10, 0))
@@ -3260,6 +2839,15 @@ def main():
     ap.add_argument("--min-delta", type=float, default=0.0)
     ap.add_argument("--fps", type=float, default=30.0,
                     help="Playback/simulation frame rate used for skeleton dt.")
+    ap.add_argument("--cache-db", type=Path, default=None,
+                    help="SQLite cache for simulated Kalman outputs.")
+    ap.add_argument("--simulation-backend", choices=["thread", "process"],
+                    default="thread",
+                    help="Parallel backend for per-landmark simulation.")
+    ap.add_argument("--simulation-workers", type=int, default=4,
+                    help="Number of parallel simulation workers.")
+    ap.add_argument("--no-simulation-parallel", action="store_true",
+                    help="Run simulation sequentially.")
     ap.add_argument("--no-group", action="store_true",
                     help="Skip building the Group grid (fastest load, smallest HTML).")
     ap.add_argument("--open", action="store_true")
@@ -3282,10 +2870,15 @@ def main():
         render_group=not args.no_group,
         fps=args.fps,
         settings=PoseDetectionSettings(),
+        cache_db=args.cache_db,
+        simulation_parallel=not args.no_simulation_parallel,
+        simulation_workers=args.simulation_workers,
+        simulation_backend=args.simulation_backend,
         open_report=args.open,
     )
 
 
 if __name__ == "__main__":
     main()
+
 

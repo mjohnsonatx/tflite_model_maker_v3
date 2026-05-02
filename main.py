@@ -66,6 +66,7 @@ LABEL_MAP = {SETTINGS.label_map_id: SETTINGS.label}
 HPARAMS = SETTINGS.hparams
 MODEL_NAME = SETTINGS.model_name
 MODEL_URI = SETTINGS.model_uri
+MAX_DETECTIONS = SETTINGS.tflite_max_detections
 
 
 # -----------------------------
@@ -84,19 +85,19 @@ def train_model(model, train_data, validation_data, epochs):
 def clean_cache_dir(path):
     """Remove and recreate a directory safely."""
     if os.path.exists(path):
-        print(f"🧹 Clearing old cache: {path}")
+        print(f"Clearing old cache: {path}")
         try:
             shutil.rmtree(path)
         except Exception as e:
-            print(f"⚠️  Could not fully remove cache ({e}), continuing...")
+            print(f"Could not fully remove cache ({e}), continuing...")
     os.makedirs(path, exist_ok=True)
-    print(f"✅ Cache directory ready: {path}")
+    print(f"Cache directory ready: {path}")
 
 
 def check_gpu_status():
     import os, tensorflow as tf
     print("=" * 80)
-    print("🔍 GPU VERIFICATION")
+    print("GPU VERIFICATION")
     print("=" * 80)
     print(f"TensorFlow version: {tf.__version__}")
     print(f"Built with CUDA: {tf.test.is_built_with_cuda()}")
@@ -104,9 +105,9 @@ def check_gpu_status():
 
     gpus = tf.config.list_physical_devices('GPU')
     if not gpus:
-        print("❌ No GPU detected. Training will run on CPU.")
+        print("No GPU detected. Training will run on CPU.")
     else:
-        print(f"✅ Detected {len(gpus)} GPU(s):")
+        print(f"Detected {len(gpus)} GPU(s):")
         for i, gpu in enumerate(gpus):
             print(f"  GPU {i}: {gpu.name}")
             try:
@@ -129,9 +130,9 @@ def check_gpu_status():
         print("  CUDA:", build_info.build_info.get('cuda_version', 'Unknown'))
         print("  cuDNN:", build_info.build_info.get('cudnn_version', 'Unknown'))
     except Exception:
-        print("⚠️  Could not query build info (TensorFlow internal).")
+        print("Could not query build info (TensorFlow internal).")
 
-    # 🧩 Mixed Precision Status
+    # Mixed Precision Status
     try:
         from tensorflow.keras import mixed_precision
         policy = mixed_precision.global_policy()
@@ -222,7 +223,8 @@ if __name__ == "__main__":
         model_spec = tflite_model_maker.object_detector.EfficientDetSpec(
             model_name=MODEL_NAME,
             uri=MODEL_URI,
-            hparams=HPARAMS
+            hparams=HPARAMS,
+            tflite_max_detections=MAX_DETECTIONS
         )
 
         # -----------------------------
@@ -301,7 +303,7 @@ if __name__ == "__main__":
         )
 
         print("\n" + "=" * 80)
-        print(f"✅ Export complete! Assets saved to:\n{EXPORT_DIR}")
+        print(f"Export complete! Assets saved to:\n{EXPORT_DIR}")
         print("=" * 80)
         print("This folder now contains:")
         print("  • The .tflite model")
@@ -317,7 +319,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         print("\n" + "=" * 80)
-        print("❌ ERROR OCCURRED")
+        print("ERROR OCCURRED")
         print("=" * 80)
         import traceback
 
@@ -331,13 +333,13 @@ if __name__ == "__main__":
         stdout_logger.close()
         stderr_logger.close()
 
-        print(f"\n✅ Training log saved to: {log_filepath}")
-        print(f"✅ Training specs saved to: {specs_filepath}")
+        print(f"\nTraining log saved to: {log_filepath}")
+        print(f"Training specs saved to: {specs_filepath}")
         print("\n" + "=" * 80)
         print("STARTING AUTOMATIC VISUALIZATION...")
         print("=" * 80)
 
         if visualize_training_results(log_filepath, specs_filepath):
             print("\n" + "=" * 80)
-            print("✅ Visualization complete!")
+            print("Visualization complete!")
             print("=" * 80)
