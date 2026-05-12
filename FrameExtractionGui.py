@@ -775,4 +775,3 @@ are typically best choices.
 
         if progress >= 100 or "Error" in status or "Done" in status:
             self._reset_buttons()
-

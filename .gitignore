@@ -27,3 +27,6 @@ tmp*/
 world_space_kalman_filter_private.py
 world_filter_cache*.sqlite
 *_world_filter_cache.sqlite
+/old_kb_models/
+/old_barbell_models/
+/old_db_models/
