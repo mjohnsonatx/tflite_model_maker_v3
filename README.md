@@ -4,17 +4,95 @@ A desktop application for the complete end-to-end workflow of building TensorFlo
 
 ## Launch
 
-Create your private environment file first:
+### Fedora with Python 3.9 and NVIDIA CUDA
+
+This checkout has a project-local Python 3.9 environment at `.venv`. Install the
+application packages and CUDA runtime libraries with:
 
 ```bash
-copy .env
+bash scripts/setup-fedora-python.sh
 ```
 
-Fill `.env` with your local dataset paths, model settings, and hyperparameters. The real `.env` file is ignored by git so those values stay out of the public repo.
+The Fedora dependency files retain TensorFlow 2.8.3 and TFLite Model Maker 0.3.4.
+CUDA 11.8 and cuDNN 8.9.6 are installed inside `.venv`; the system NVIDIA driver
+is installed separately. TensorFlow 2.8's tested build used CUDA 11.2 and cuDNN
+8.1 ([build matrix](https://www.tensorflow.org/install/source#gpu)), so verify
+this newer CUDA 11 runtime on the actual GPU before training.
+
+On this Fedora 44 machine, the RPM Fusion NVIDIA repository is already enabled.
+Install the driver from your terminal:
 
 ```bash
-python GuiModelMaker__MAIN__.py
+sudo bash scripts/setup-fedora-nvidia.sh
 ```
+
+The driver installer builds signed kernel modules. With Secure Boot enabled, it
+requests a temporary enrollment password if the akmods key is not enrolled.
+Reboot when installation finishes, choose **Enroll MOK → Continue → Yes** in the
+firmware screen, enter that password, and finish rebooting.
+
+Verify GPU matrix multiplication, convolution, and backpropagation, then launch:
+
+```bash
+nvidia-smi
+bash scripts/run-fedora.sh scripts/check-gpu.py --require-gpu
+bash scripts/run-fedora.sh
+```
+
+The launcher activates `.venv` and sets the CUDA library path before starting
+Python. For a terminal session, use `source scripts/fedora-env.sh`. In PyCharm,
+select `.venv/bin/python` as the interpreter and copy the value printed by
+`echo "$TFLITE_CUDA_LIBRARY_PATH"` after activation into the run configuration's
+`LD_LIBRARY_PATH` environment variable.
+
+### Windows with Python 3.9 and NVIDIA CUDA
+
+Prerequisites:
+
+- **64-bit Python 3.9**, available through the Python launcher as `py -3.9`.
+- A compatible NVIDIA GPU and a current [NVIDIA Windows driver](https://www.nvidia.com/en-us/drivers/).
+- The [Microsoft Visual C++ x64 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
+
+Run these commands in PowerShell from the repository root:
+
+```powershell
+.\scripts\setup-windows.ps1
+.\scripts\run-windows.ps1 -CheckGpu
+.\scripts\run-windows.ps1
+```
+
+If PowerShell blocks local scripts, permit them for the current terminal session:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+```
+
+If Python 3.9 is installed without the Python launcher, provide its full path:
+
+```powershell
+.\scripts\setup-windows.ps1 -PythonExecutable 'C:\Python39\python.exe'
+```
+
+The installer creates `.venv`, installs the shared Python dependencies and CUDA
+11.8 runtime wheels, then downloads cuDNN 8.9.6 from NVIDIA's official archive
+and verifies its SHA-256 checksum. The runtime libraries and download cache stay
+inside the project; the system NVIDIA driver remains a prerequisite. The
+launcher configures both `PATH` and Python's DLL directories before starting the
+GUI. For an interactive PowerShell session, dot-source
+`. .\scripts\windows-env.ps1`.
+
+TensorFlow remains pinned to **2.8.3** because native Windows GPU support ends
+at TensorFlow 2.10 ([TensorFlow installation guide](https://www.tensorflow.org/install/pip#windows-native)).
+GPU verification requires a detected GPU and checks matrix multiplication,
+convolution, and gradients without CPU fallback. These scripts have not been
+executed on Windows; this setup's live validation is on Fedora.
+
+### Application configuration
+
+Create a `.env` file in the repository root and fill it with your local dataset
+paths, model settings, and hyperparameters. The real `.env` file is ignored by
+git so those values stay out of the public repo. Launch with the Fedora or
+Windows script above so the CUDA library paths are configured.
 
 The app opens with eight tabs, each covering one stage of the workflow. Below is the step-by-step walkthrough.
 
