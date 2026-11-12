@@ -14,6 +14,41 @@ from VisualizerTab import VisualizerTab
 
 class TFLiteModelMakerGUI:
     def __init__(self, root):
+        self.log_text = None
+        self.log_frame = None
+        self.maximize_btn = None
+        self.toggle_btn = None
+        self.log_level_label = None
+        self.expand_symbol = None
+        self.collapse_symbol = None
+        self.log_main_frame = None
+        self.log_container = None
+        self.inference_tab = None
+        self.inference_frame = None
+        self.visualizer_tab = None
+        self.log_title_label = None
+        self.training_tab = None
+        self.augmentation_tab = None
+        self.preview_validate_tab = None
+        self.visualizer_frame = None
+        self.training_frame = None
+        self.file_operations_tab = None
+        self.annotation_tab = None
+        self.frame_extraction_tab = None
+        self.augmentation_frame = None
+        self.data_cleaning_tab = None
+        self.preview_validate_frame = None
+        self.file_operations_frame = None
+        self.annotation_frame = None
+        self.frame_extraction_frame = None
+        self.data_cleaning_frame = None
+        self.notebook = None
+        self.notebook_canvas_window = None
+        self.notebook_scroll_frame = None
+        self.notebook_scrollbar = None
+        self.notebook_canvas = None
+        self.notebook_container = None
+        self.main_paned = None
         self.root = root
         self.root.title("TFLite Model Maker Studio")
 
